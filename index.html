@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en" data-side="pretty">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--SKELETON-END-->
+<title>Finn Shapiro Tickets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Bodoni+Moda:wght@700;900&family=Special+Elite&family=Rubik+Mono+One&family=IBM+Plex+Mono:wght@400;600&family=Karla:wght@400;600;800&family=Yellowtail&display=swap">
+<style>
+/* ============ TOKENS ============
+   Same two worlds as the shop, picked by the clock:
+   pretty = AM (pink collage, ransom-note letters)   killer = PM (black, chrome, hot pink) */
+:root{
+  --ground:#f8d2e1; --ground-2:#fbe2ec; --surface:#fffafc; --ink:#161015; --muted:#8e5a73;
+  --accent:#f25fc4; --accent-ink:#161015; --line:#e9b1c9; --taken:#e6cfd9; --taken-ink:#a58597;
+  --stage:#161015; --stage-ink:#f25fc4; --section:#fffafc; --section-line:#e9b1c9;
+  --display:"Bodoni Moda","Didot",Georgia,serif;
+  --body:"Karla",system-ui,sans-serif;
+  --mono:"Special Elite","Courier New",monospace;
+  --radius:3px; --shadow:0 18px 28px -14px rgba(120,30,75,.45);
+  --label-case:none; --label-track:.04em;
+  color-scheme:light;
+}
+:root[data-side="killer"]{
+  --ground:#09080a; --ground-2:#121014; --surface:#141216; --ink:#f2ecf0; --muted:#8c8390;
+  --accent:#ff3fae; --accent-ink:#0a0a0a; --line:#2c272f; --taken:#24202a; --taken-ink:#5f5865;
+  --stage:#ff3fae; --stage-ink:#0a0a0a; --section:#141216; --section-line:#3a353e;
+  --display:"Anton","Impact",sans-serif;
+  --body:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --radius:0px; --shadow:6px 6px 0 0 #ff3fae;
+  --label-case:uppercase; --label-track:.14em;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font:16px/1.55 var(--body);padding-inline:16px;min-height:100vh;overflow-x:clip;transition:background-color .5s ease,color .5s ease}
+.wrap{max-width:1120px;margin-inline:auto}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+[hidden]{display:none!important}
+.label{font:600 12px/1.2 var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);color:var(--muted)}
+a{color:inherit}
+
+/* header */
+header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px;margin-inline:-16px;padding-inline:16px;background:color-mix(in srgb,var(--ground) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column;line-height:1.1;text-decoration:none}
+.brand b{font:900 20px/1 var(--display);letter-spacing:.02em}
+[data-side="killer"] .brand b{font-weight:400;letter-spacing:.06em;text-transform:uppercase}
+.brand span{font-size:12px;color:var(--muted)}
+.side-pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:var(--radius);border:1.5px solid var(--line);background:var(--surface);font:600 12px/1 var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);white-space:nowrap}
+.side-pill i{width:8px;height:8px;border-radius:50%;background:var(--accent);display:block}
+.btn{border:0;cursor:pointer;background:var(--ink);color:var(--ground);padding:10px 16px;border-radius:var(--radius);font-weight:800;font-size:14px;text-transform:var(--label-case);letter-spacing:var(--label-track);text-decoration:none;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+.btn:hover{background:var(--accent);color:var(--accent-ink)}
+[data-side="killer"] .btn{background:var(--accent);color:var(--accent-ink);font-weight:600}
+[data-side="killer"] .btn:hover{background:var(--ink);color:var(--ground)}
+.btn:disabled,.btn[aria-disabled="true"]{background:var(--taken);color:var(--taken-ink);cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn .count{background:var(--accent);color:var(--accent-ink);min-width:20px;height:20px;display:inline-grid;place-items:center;font-size:12px;padding-inline:5px;border-radius:2px}
+[data-side="killer"] .btn .count{background:var(--accent-ink);color:var(--accent)}
+
+/* hero */
+.hero{position:relative;padding-block:52px 36px}
+.hero > :not(.fx){position:relative}
+.eyebrow{display:inline-block;font:14px/1 var(--mono);padding:6px 10px;background:var(--ink);color:var(--accent);text-transform:var(--label-case);letter-spacing:var(--label-track)}
+.title{margin:12px 0 0;line-height:.9;display:flex;flex-wrap:wrap;gap:.04em;font-size:clamp(64px,14vw,168px)}
+.title .ch{display:inline-block;font-family:var(--f);color:var(--c);background:var(--b);padding:.02em .1em;transform:rotate(var(--r));font-size:var(--s,1em);border:var(--bd,0)}
+[data-side="pretty"] .title .ch{box-shadow:0 6px 14px -6px rgba(90,20,55,.45)}
+.hero p.sub{max-width:50ch;font-size:18px;margin:22px 0 0;background:var(--surface);padding:14px 16px;box-shadow:var(--shadow)}
+[data-side="pretty"] .hero p.sub{transform:rotate(-.5deg)}
+.hero .note{margin-top:12px;display:inline-block;font:13px/1.3 var(--mono);background:var(--accent);color:var(--accent-ink);padding:6px 10px}
+.fx{position:absolute;top:0;bottom:0;left:50%;width:100vw;margin-left:-50vw;pointer-events:none;overflow:hidden}
+.fx.collage{display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(2,1fr);gap:3px;background:#f3bcd1}
+.fx.collage > div{display:grid;place-items:center;overflow:hidden}
+.t-grid{background:#f7c4d6;background-image:linear-gradient(#fbe0ea 2px,transparent 2px),linear-gradient(90deg,#fbe0ea 2px,transparent 2px);background-size:22px 22px}
+.t-ging{background:#fde9f0;background-image:linear-gradient(90deg,rgba(242,95,196,.28) 50%,transparent 50%),linear-gradient(rgba(242,95,196,.28) 50%,transparent 50%);background-size:18px 18px}
+.t-dots{background:#f4a9c6;background-image:radial-gradient(#fff 22%,transparent 24%);background-size:16px 16px}
+.t-blush{background:linear-gradient(180deg,#fde1ea,#f2b3c9)}
+.t-rose{background:#ee9fbf}
+.t-love{font:44px/1 "Yellowtail",cursive;color:#fff;text-shadow:0 0 8px #fff,0 0 18px #ff8fcf}
+.t-ticket{font:18px/1 "Special Elite",monospace;color:#c24a86;border:2px dashed #c24a86;padding:8px 12px;transform:rotate(-8deg);background:#ffd3e3}
+.fx.slashes i{position:absolute;height:2px;background:var(--accent);transform-origin:left;opacity:.85}
+.band{margin-inline:-16px;overflow:hidden;background:var(--ink)}
+.band .track{display:flex;width:max-content;animation:scroll 30s linear infinite;padding-block:10px}
+.band span{font:900 20px/1 var(--display);padding-inline:14px;white-space:nowrap;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+[data-side="killer"] .band{background:var(--accent)}
+[data-side="killer"] .band span{color:#0a0a0a;font-weight:400}
+@keyframes scroll{to{transform:translateX(-50%)}}
+
+/* sections */
+h2.sec{font:900 34px/1 var(--display);margin:44px 0 16px}
+[data-side="killer"] h2.sec{font-weight:400;text-transform:uppercase;letter-spacing:.04em}
+.events{display:flex;flex-direction:column;gap:14px}
+.event{display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center;background:var(--surface);padding:18px;border-radius:var(--radius);box-shadow:var(--shadow)}
+.event .date{width:86px;text-align:center;border:2px solid var(--ink);padding:8px 4px;background:var(--surface)}
+.event .date b{display:block;font:900 30px/1 var(--display)}
+.event .date span{display:block;font:12px/1.2 var(--mono);text-transform:uppercase;letter-spacing:.12em}
+.event h3{margin:0;font:900 24px/1.1 var(--display)}
+[data-side="killer"] .event h3{font-weight:400;text-transform:uppercase;letter-spacing:.03em}
+.event .meta{font-size:14px;color:var(--muted);margin-top:4px}
+.event .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag{font:600 11px/1.3 var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);padding:3px 8px;border-radius:var(--radius);background:var(--ground-2);border:1px solid var(--line)}
+.tag.hot{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.event.ended{filter:grayscale(1);opacity:.55;box-shadow:none}
+.event.ended .btn{pointer-events:none}
+
+/* my tickets */
+.stubs{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.stub{display:grid;grid-template-columns:1fr auto;background:var(--surface);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.stub .main{padding:16px;display:flex;flex-direction:column;gap:6px}
+.stub .main h4{margin:0;font:900 20px/1.1 var(--display)}
+[data-side="killer"] .stub .main h4{font-weight:400;text-transform:uppercase}
+.stub .row{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}
+.stub .row b{display:block;font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:3px}
+.stub .side{background:var(--ink);color:var(--accent);display:flex;align-items:center;justify-content:center;padding:12px;border-left:2px dashed var(--ground);writing-mode:vertical-rl;font:14px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase}
+[data-side="killer"] .stub .side{background:var(--accent);color:#0a0a0a}
+.stub .code{font:600 15px/1 var(--mono);letter-spacing:.12em}
+
+/* event view */
+.back{display:inline-block;margin-top:24px;font:13px/1 var(--mono);text-decoration:underline}
+.ev-head{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between;margin-block:16px 20px}
+.ev-head h1{margin:0;font:900 clamp(34px,6vw,56px)/1 var(--display);text-wrap:balance}
+[data-side="killer"] .ev-head h1{font-weight:400;text-transform:uppercase;letter-spacing:.03em}
+.ev-head p{margin:6px 0 0;color:var(--muted)}
+.ev-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:20px;padding-bottom:56px}
+.map-card,.panel{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+.map-card svg{width:100%;height:auto;display:block}
+.seat{cursor:pointer}
+.seat:focus{outline:none}
+.seat:focus-visible .ring{stroke:var(--accent);stroke-width:8}
+.seat.taken{cursor:not-allowed}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;margin-top:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:16px;height:16px;border-radius:50%;display:block;position:relative}
+.legend .l-open{background:var(--accent)}
+.legend .l-sel{background:var(--ink);box-shadow:0 0 0 3px var(--accent)}
+.legend .l-taken{background:var(--taken)}
+.legend .l-taken::after{content:"×";position:absolute;inset:0;display:grid;place-items:center;font-size:14px;line-height:1;color:var(--taken-ink)}
+.panel{display:flex;flex-direction:column;gap:16px;align-self:start;position:sticky;top:calc(env(safe-area-inset-top,0px) + 84px)}
+.pick{border:1.5px dashed var(--line);padding:14px;border-radius:var(--radius)}
+.pick h3{margin:0 0 4px;font:900 22px/1.1 var(--display)}
+[data-side="killer"] .pick h3{font-weight:400;text-transform:uppercase}
+.pick p{margin:0;font-size:14px;color:var(--muted)}
+.pick .price{font:800 20px/1 var(--body);margin-top:8px}
+.secs{display:flex;flex-direction:column;gap:10px}
+.secrow{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center}
+.secrow .n{font-weight:800;font-size:14px}
+.secrow .left{font:12px/1 var(--mono);color:var(--muted)}
+.secrow .chips{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}
+.chip{min-width:44px;padding:7px 10px;border-radius:var(--radius);border:1.5px solid var(--accent);background:transparent;cursor:pointer;font:600 13px/1 var(--mono)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.chip:disabled{border-color:var(--line);color:var(--taken-ink);text-decoration:line-through;cursor:not-allowed}
+.soldout{font:13px/1.4 var(--mono);color:var(--muted)}
+.mode-note{font-size:12px;color:var(--muted);margin:0}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(20,8,16,.5);z-index:40}
+.modal{position:fixed;z-index:50;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,calc(100% - 32px));max-height:calc(100% - 48px);overflow:auto;background:var(--surface);border-radius:var(--radius);padding:24px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)}
+.modal header{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:14px}
+.modal h2{margin:0;font:900 28px/1.05 var(--display)}
+[data-side="killer"] .modal h2{font-weight:400;text-transform:uppercase}
+.x{background:none;border:1.5px solid var(--line);width:36px;height:36px;border-radius:var(--radius);cursor:pointer;font-size:18px;line-height:1;flex:none}
+form.claim{display:flex;flex-direction:column;gap:16px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field input[type="text"],.field input[type="email"],.field input[type="password"],.field input[type="search"]{background:var(--ground-2);border:1.5px solid var(--line);border-radius:var(--radius);padding:11px 12px;min-width:0}
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+legend{padding:0}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice{position:relative}
+.choice input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.choice span{display:block;text-align:center;padding:14px;border:1.5px solid var(--line);border-radius:var(--radius);font-weight:800;background:var(--ground-2)}
+.choice input:checked + span{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+[data-side="pretty"] .choice input:checked + span{color:var(--accent)}
+.choice input:focus-visible + span{outline:3px solid var(--accent);outline-offset:2px}
+.err{color:#d12a6a;font-size:14px;margin:0}
+[data-side="killer"] .err{color:#ff6ab8}
+.summary{font-size:14px;background:var(--ground-2);padding:10px 12px;border-radius:var(--radius)}
+
+/* admin */
+.admin-top{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between;margin-block:24px 16px}
+.admin-top h1{margin:0;font:900 40px/1 var(--display)}
+[data-side="killer"] .admin-top h1{font-weight:400;text-transform:uppercase}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--surface);padding:14px;border-radius:var(--radius)}
+.stat b{display:block;font:900 30px/1 var(--display);font-variant-numeric:tabular-nums}
+[data-side="killer"] .stat b{font-weight:400}
+.stat span{font-size:13px;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:12px}
+.tools .field{flex:1 1 220px}
+.table-wrap{overflow-x:auto;background:var(--surface);border-radius:var(--radius);margin-bottom:56px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;padding:10px 12px;border-bottom:1.5px solid var(--line);font:600 12px/1.2 var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.rel{font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;padding:4px 8px;border-radius:var(--radius);background:var(--ground-2);border:1px solid var(--line)}
+.rel.family{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.linkish{background:none;border:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:13px}
+.confirm{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+.empty{color:var(--muted);text-align:center;padding:32px}
+.banner{font-size:13px;padding:10px 12px;border:1.5px dashed var(--accent);border-radius:var(--radius);margin-bottom:16px;background:var(--surface)}
+
+footer{border-top:1px solid var(--line);padding-block:24px 40px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;background:var(--surface);color:var(--ink);font-family:var(--mono)}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--ground);padding:10px 18px;border-radius:var(--radius);font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+
+@media (max-width:860px){
+  .ev-grid{grid-template-columns:1fr}
+  .panel{position:static}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:560px){
+  .event{grid-template-columns:auto 1fr}
+  .event .go{grid-column:1/-1}
+  .event .go .btn{width:100%}
+  .brand span{display:none}
+  .fx.collage{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="bar">
+    <a class="brand" href="#"><b>Finn Shapiro</b><span>Tickets · every ticket is free</span></a>
+    <div class="side-pill"><i></i><span id="sideName">AM · Pretty side</span></div>
+    <a class="btn" href="#mine" id="myBtn">My tickets <span class="count" id="myCount">0</span></a>
+  </header>
+
+  <!-- HOME -->
+  <section id="view-home">
+    <div class="hero">
+      <div class="fx" id="fx"></div>
+      <span class="eyebrow">Finn Shapiro · Live</span>
+      <h1 class="title" id="heroTitle" aria-label="Tickets"></h1>
+      <p class="sub">Every ticket is free. Pick your seat on the map, tell us your name and whether you're Finn's friend or family, and you're in.</p>
+      <span class="note">First come, first served: once a seat is claimed, it's gone.</span>
+    </div>
+  </section>
+</div>
+
+<div class="band" id="bandWrap" aria-hidden="true"><div class="track" id="band"></div></div>
+
+<main class="wrap">
+  <section id="home-body">
+    <h2 class="sec">Shows</h2>
+    <div class="events" id="events"></div>
+
+    <div id="mine" hidden>
+      <h2 class="sec">My tickets</h2>
+      <div class="stubs" id="stubs"></div>
+      <p class="mode-note" style="margin-top:10px">Saved on this device. Show the ticket code at the door.</p>
+    </div>
+  </section>
+
+  <!-- EVENT -->
+  <section id="view-event" hidden>
+    <a class="back" href="#">← All shows</a>
+    <div class="ev-head">
+      <div>
+        <div class="label" id="evWhen"></div>
+        <h1 id="evName"></h1>
+        <p id="evWhere"></p>
+      </div>
+      <div class="tags" style="display:flex;gap:6px;flex-wrap:wrap"><span class="tag hot">Free</span><span class="tag">Same ticket for Pretty + Killer</span></div>
+    </div>
+    <div class="ev-grid">
+      <div class="map-card">
+        <div id="map"></div>
+        <div class="legend"><span><i class="l-open"></i>Available</span><span><i class="l-sel"></i>Your pick</span><span><i class="l-taken"></i>Taken</span></div>
+      </div>
+      <aside class="panel" aria-label="Your seat">
+        <div class="pick" id="pick"></div>
+        <button class="btn" type="button" id="getTicket" disabled>Get free ticket</button>
+        <div>
+          <div class="label" style="margin-bottom:10px">Seats by area</div>
+          <div class="secs" id="secs"></div>
+        </div>
+        <p class="mode-note" id="modeNote"></p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ADMIN (only reachable through the #admin link) -->
+  <section id="view-admin" hidden>
+    <div class="admin-top">
+      <div><div class="label">Admin</div><h1>All tickets</h1></div>
+      <a class="back" href="#" style="margin:0">← Back to the site</a>
+    </div>
+    <div class="banner" id="adminBanner" hidden></div>
+
+    <form id="signin" class="claim" style="max-width:420px" hidden>
+      <p style="margin:0">Sign in with your Firebase admin account to see who has tickets.</p>
+      <div class="field"><label class="label" for="aEmail">Email</label><input id="aEmail" type="email" autocomplete="username" required></div>
+      <div class="field"><label class="label" for="aPass">Password</label><input id="aPass" type="password" autocomplete="current-password" required></div>
+      <p class="err" id="signinErr" hidden></p>
+      <button class="btn" type="submit">Sign in</button>
+    </form>
+
+    <div id="adminBody" hidden>
+      <div class="stats" id="stats"></div>
+      <div class="tools">
+        <div class="field"><label class="label" for="aSearch">Search names or seats</label><input id="aSearch" type="search" autocomplete="off"></div>
+        <button class="btn ghost" type="button" id="copyCsv">Copy as spreadsheet</button>
+        <button class="btn ghost" type="button" id="signOut" hidden>Sign out</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Seat</th><th>Area</th><th>Name</th><th>Friend or family</th><th>Claimed</th><th>Ticket code</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="wrap">
+  <footer>
+    <span>© 2026 Finn Shapiro · 15 Freeman Parkway</span>
+    <span>Test mode: type <kbd>am</kbd> or <kbd>pm</kbd> to switch sides, <kbd>auto</kbd> to follow the clock</span>
+  </footer>
+</div>
+
+<!-- claim modal -->
+<div class="scrim" id="scrim" hidden></div>
+<section class="modal" id="modal" hidden aria-label="Get your ticket">
+  <div id="claimStep">
+    <header><h2>Get your free ticket</h2><button class="x" type="button" data-close aria-label="Close">×</button></header>
+    <form class="claim" id="claimForm" novalidate>
+      <div class="summary" id="claimSummary"></div>
+      <div class="field"><label class="label" for="tName">Your name</label><input id="tName" type="text" autocomplete="name" maxlength="60" required></div>
+      <fieldset>
+        <legend class="label">Are you Finn's friend or family?</legend>
+        <div class="choices">
+          <label class="choice"><input type="radio" name="rel" id="relFriend" value="friend"><span>Friend</span></label>
+          <label class="choice"><input type="radio" name="rel" id="relFamily" value="family"><span>Family</span></label>
+        </div>
+      </fieldset>
+      <p class="err" id="claimErr" hidden></p>
+      <button class="btn" type="submit" id="claimBtn">Claim free ticket</button>
+    </form>
+  </div>
+  <div id="doneStep" hidden>
+    <header><h2>You're in ♡</h2><button class="x" type="button" data-close aria-label="Close">×</button></header>
+    <div id="doneTicket"></div>
+    <p class="mode-note" style="margin-top:12px">Your ticket is saved under My tickets on this device. Show the ticket code at the door.</p>
+    <button class="btn" type="button" data-close style="margin-top:14px;width:100%">Done</button>
+  </div>
+</section>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* =====================================================================
+   CONFIG — add Firebase later (see README.md). Until then the site runs
+   in DEMO MODE: tickets are saved in this browser only.
+   ===================================================================== */
+const CONFIG = {
+  firebase: {
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: "",
+    appId: ""
+  },
+  // The email of the Firebase Auth account allowed to see all tickets.
+  // Put the same email in firestore.rules.
+  adminEmail: ""
+};
+
+/* =====================================================================
+   SHOWS + SEATING (based on the Square seating chart)
+   Numbers on the chart = how many people each area holds.
+   ===================================================================== */
+const VENUE_ADDRESS = "15 Freeman Parkway";
+const SHOWS = [
+  { id:"vintage", name:"The Vintage Tour", month:"Sep", day:"19", when:"Saturday, September 19, 2026", ended:true },
+  { id:"prettykiller", name:"Pretty Killer Tour", month:"No date", day:"PK", when:"No set date", ended:false }
+];
+const LAYOUT = {
+  view:"0 0 1456 834",
+  stage:{ x:422, y:250, w:612, h:568 },
+  areas:[
+    { id:"C",  name:"Center",     x:422,  y:15,  w:612, h:195, seats:[[575,98],[728,98],[881,98]] },
+    { id:"LB", name:"Left Box",   x:221,  y:39,  w:137, h:145, seats:[[289,98]] },
+    { id:"RB", name:"Right Box",  x:1054, y:39,  w:137, h:145, seats:[[1122,98]] },
+    { id:"L",  name:"Left Side",  x:50,   y:249, w:290, h:511, seats:[[195,318],[195,428],[195,538],[195,648]] },
+    { id:"R",  name:"Right Side", x:1116, y:249, w:290, h:511, seats:[[1261,318],[1261,428],[1261,538],[1261,648]] }
+  ]
+};
+const SEATS = LAYOUT.areas.flatMap(a => a.seats.map((xy, i) => ({ id:`${a.id}${i+1}`, area:a, n:i+1, x:xy[0], y:xy[1] })));
+const seatById = id => SEATS.find(s => s.id === id);
+const seatLabel = s => `${s.area.name} · Seat ${s.n}`;
+const showById = id => SHOWS.find(s => s.id === id);
+
+/* =====================================================================
+   STORE — Firebase when configured, otherwise demo mode (this browser).
+   Each seat is one document, so a seat can only ever be claimed once.
+   ===================================================================== */
+const firebaseOn = () => !!(CONFIG.firebase.apiKey && CONFIG.firebase.projectId);
+const DEMO_KEY = "pk-tickets-demo-v1";
+const Demo = {
+  listeners: new Set(),
+  read(){ try { return JSON.parse(localStorage.getItem(DEMO_KEY)) || {}; } catch(e){ return {}; } },
+  write(all){ try { localStorage.setItem(DEMO_KEY, JSON.stringify(all)); } catch(e){} this.notify(); },
+  notify(){ this.listeners.forEach(fn => fn()); },
+  watch(fn){ this.listeners.add(fn); fn(); return () => this.listeners.delete(fn); }
+};
+window.addEventListener("storage", e => { if (e.key === DEMO_KEY) Demo.notify(); });
+
+let fb = null; // { db, auth }
+function loadScript(src){
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+}
+async function initFirebase(){
+  if (!firebaseOn() || fb) return fb;
+  const base = "https://www.gstatic.com/firebasejs/10.12.2/";
+  await loadScript(base + "firebase-app-compat.js");
+  await Promise.all([loadScript(base + "firebase-firestore-compat.js"), loadScript(base + "firebase-auth-compat.js")]);
+  firebase.initializeApp(CONFIG.firebase);
+  fb = { db: firebase.firestore(), auth: firebase.auth() };
+  return fb;
+}
+const ticketId = (show, seat) => `${show}__${seat}`;
+
+const Store = {
+  // live set of taken seat ids for one show (public: no names)
+  watchTaken(show, cb){
+    if (!fb) return Demo.watch(() => cb(new Set(Object.values(Demo.read()).filter(t => t.show === show).map(t => t.seat))));
+    return fb.db.collection("seats").where("show", "==", show)
+      .onSnapshot(snap => cb(new Set(snap.docs.map(d => d.data().seat))), () => cb(new Set()));
+  },
+  async claim(show, seat, name, relation){
+    const s = seatById(seat), code = makeCode();
+    const t = { show, seat, area:s.area.name, name, relation, code };
+    const id = ticketId(show, seat);
+    if (!fb){
+      const all = Demo.read();
+      if (all[id]) throw { code:"taken" };
+      all[id] = { ...t, createdAt: Date.now() };
+      Demo.write(all);
+      return { id, ...t, createdAt: Date.now() };
+    }
+    const now = firebase.firestore.FieldValue.serverTimestamp();
+    const batch = fb.db.batch();
+    // If the seat already exists this write is an update, which the rules refuse,
+    // so the whole batch fails and nobody can take a claimed seat.
+    batch.set(fb.db.collection("seats").doc(id), { show, seat, takenAt: now });
+    batch.set(fb.db.collection("tickets").doc(id), { ...t, createdAt: now });
+    try { await batch.commit(); }
+    catch(e){ throw { code: e && e.code === "permission-denied" ? "taken" : "error" }; }
+    return { id, ...t, createdAt: Date.now() };
+  },
+  // admin: every ticket with names
+  watchTickets(cb, onErr){
+    if (!fb) return Demo.watch(() => cb(Object.entries(Demo.read()).map(([id, t]) => ({ id, ...t }))));
+    return fb.db.collection("tickets").onSnapshot(
+      snap => cb(snap.docs.map(d => { const t = d.data(); return { id:d.id, ...t, createdAt: t.createdAt && t.createdAt.toMillis ? t.createdAt.toMillis() : Date.now() }; })),
+      e => onErr && onErr(e));
+  },
+  async release(id){
+    if (!fb){ const all = Demo.read(); delete all[id]; Demo.write(all); return; }
+    const batch = fb.db.batch();
+    batch.delete(fb.db.collection("tickets").doc(id));
+    batch.delete(fb.db.collection("seats").doc(id));
+    await batch.commit();
+  }
+};
+function makeCode(){
+  const abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let c = ""; const r = crypto.getRandomValues(new Uint32Array(6));
+  r.forEach(n => c += abc[n % abc.length]);
+  return "PK-" + c;
+}
+
+/* ---------- my tickets (this device) ---------- */
+const MY_KEY = "pk-my-tickets";
+let mine = [];
+try { mine = JSON.parse(localStorage.getItem(MY_KEY)) || []; } catch(e){}
+const saveMine = () => { try { localStorage.setItem(MY_KEY, JSON.stringify(mine)); } catch(e){} };
+
+/* =====================================================================
+   SIDE (AM / PM) — same as the shop
+   ===================================================================== */
+const SIDES = {
+  pretty:{ pill:"AM · Pretty side", word:"tickets", band:"FREE TICKETS ♡ PRETTY KILLER TOUR ♡ 15 FREEMAN PARKWAY ♡ ",
+    ransom:[
+      { f:"'Bodoni Moda', serif", c:"#f25fc4", b:"#161015", r:"-5deg", s:"1em" },
+      { f:"'Special Elite', monospace", c:"#161015", b:"#ffffff", r:"4deg", s:".85em" },
+      { f:"'Anton', sans-serif", c:"#ffffff", b:"#f25fc4", r:"-2deg", s:"1.08em" },
+      { f:"'Bodoni Moda', serif", c:"#f25fc4", b:"#ffffff", r:"3deg", s:".95em", bd:"3px solid #f25fc4" },
+      { f:"'Rubik Mono One', sans-serif", c:"#161015", b:"#f7b8d4", r:"-4deg", s:".8em" },
+      { f:"'Bodoni Moda', serif", c:"#ffffff", b:"#161015", r:"6deg", s:"1.05em" }
+    ] },
+  killer:{ pill:"PM · Killer side", word:"TICKETS", band:"FREE TICKETS ✕ PRETTY KILLER TOUR ✕ 15 FREEMAN PARKWAY ✕ ",
+    ransom:[
+      { f:"'Bodoni Moda', serif", c:"#0a0a0a", b:"#f2ecf0", r:"-4deg", s:"1em" },
+      { f:"'Special Elite', monospace", c:"#f2ecf0", b:"transparent", r:"3deg", s:".9em", bd:"3px solid #f2ecf0" },
+      { f:"'Anton', sans-serif", c:"#0a0a0a", b:"#ff3fae", r:"-2deg", s:"1.05em" },
+      { f:"'Rubik Mono One', sans-serif", c:"#ff3fae", b:"transparent", r:"5deg", s:".85em" },
+      { f:"'Bodoni Moda', serif", c:"#f2ecf0", b:"#1d1a20", r:"-6deg", s:".95em" },
+      { f:"'Anton', sans-serif", c:"#f2ecf0", b:"transparent", r:"2deg", s:"1.1em" }
+    ] }
+};
+let side = "pretty", override = null;
+try { override = sessionStorage.getItem("pk-side-override"); } catch(e){}
+const clockSide = () => new Date().getHours() < 12 ? "pretty" : "killer";
+
+function setSide(next){
+  side = next;
+  document.documentElement.dataset.side = side;
+  const s = SIDES[side];
+  $("#sideName").textContent = s.pill;
+  $("#heroTitle").innerHTML = [...s.word].map((ch, i) => {
+    const st = s.ransom[i % s.ransom.length];
+    return `<span class="ch" aria-hidden="true" style="--f:${st.f};--c:${st.c};--b:${st.b};--r:${st.r};--s:${st.s};--bd:${st.bd||0}">${ch}</span>`;
+  }).join("");
+  const t = s.band.repeat(6);
+  $("#band").innerHTML = `<span>${t}</span><span>${t}</span>`;
+  const fx = $("#fx");
+  if (side === "pretty"){
+    fx.className = "fx collage";
+    const tiles = [["t-grid",""],["t-rose",`<span class="t-love">love</span>`],["t-ging",""],["t-dots",""],["t-blush",`<span class="t-ticket">ADMIT ONE</span>`],["t-grid",""],
+                   ["t-blush",""],["t-ging",""],["t-rose",""],["t-grid",`<span class="t-ticket">FREE</span>`],["t-dots",""],["t-rose",`<span class="t-love">xoxo</span>`]];
+    fx.innerHTML = tiles.map(([c, h]) => `<div class="${c}">${h}</div>`).join("");
+  } else {
+    fx.className = "fx slashes";
+    fx.innerHTML = [[58,22,40,-14],[64,30,32,-12],[70,64,26,9],[50,80,44,-4]].map(([x,y,w,r]) => `<i style="left:${x}%;top:${y}%;width:${w}%;transform:rotate(${r}deg)"></i>`).join("");
+  }
+  if (current.view === "event") renderMap();
+}
+
+/* =====================================================================
+   VIEWS
+   ===================================================================== */
+const current = { view:"home", show:null, picked:null, taken:new Set(), unwatch:null };
+
+function renderEvents(){
+  $("#events").innerHTML = SHOWS.map(s => `
+    <article class="event ${s.ended ? "ended" : ""}">
+      <div class="date"><span>${s.month}</span><b>${s.day}</b></div>
+      <div>
+        <h3>${s.name}</h3>
+        <div class="meta">${s.when} · ${VENUE_ADDRESS}</div>
+        <div class="tags">${s.ended ? `<span class="tag">This show has ended</span>` : `<span class="tag hot">Free</span><span class="tag">Same ticket for Pretty + Killer</span><span class="tag" id="left-${s.id}">${SEATS.length} seats</span>`}</div>
+      </div>
+      <div class="go">${s.ended ? `<span class="btn" aria-disabled="true">Ended</span>` : `<a class="btn" href="#show-${s.id}">Find tickets</a>`}</div>
+    </article>`).join("");
+}
+
+function renderMine(){
+  $("#myCount").textContent = mine.length;
+  $("#mine").hidden = !mine.length;
+  $("#stubs").innerHTML = mine.map(stubHTML).join("");
+}
+function stubHTML(t){
+  const s = seatById(t.seat), show = showById(t.show);
+  return `<div class="stub">
+    <div class="main">
+      <span class="label">${esc(show ? show.name : t.show)} · Free</span>
+      <h4>${esc(s ? seatLabel(s) : t.seat)}</h4>
+      <div class="row"><div><b>Name</b>${esc(t.name)}</div><div><b>Guest of Finn</b>${t.relation === "family" ? "Family" : "Friend"}</div></div>
+      <div class="row"><div><b>Ticket code</b><span class="code">${esc(t.code)}</span></div></div>
+    </div>
+    <div class="side">Admit one</div>
+  </div>`;
+}
+
+function openEvent(id){
+  const show = showById(id);
+  if (!show || show.ended){ location.hash = ""; return; }
+  current.show = show; current.picked = null;
+  $("#evWhen").textContent = show.when;
+  $("#evName").textContent = show.name;
+  $("#evWhere").textContent = `${VENUE_ADDRESS} · ${SEATS.length} seats · one ticket works for the Pretty and the Killer side`;
+  $("#modeNote").textContent = fb ? "Seats update live as people claim them." : "Demo mode: tickets save in this browser only until Firebase is added.";
+  if (current.unwatch) current.unwatch();
+  current.unwatch = Store.watchTaken(show.id, taken => {
+    current.taken = taken;
+    if (current.picked && taken.has(current.picked)){ current.picked = null; toast("Someone just took that seat. Pick another one."); }
+    renderMap();
+  });
+}
+
+function renderMap(){
+  const L = LAYOUT, taken = current.taken, mineHere = new Set(mine.filter(t => current.show && t.show === current.show.id).map(t => t.seat));
+  const areaLeft = a => a.seats.filter((_, i) => !taken.has(`${a.id}${i+1}`)).length;
+  const areas = L.areas.map(a => {
+    const left = areaLeft(a), small = a.w < 200;
+    const ly = a.y + a.h - (small ? 18 : 26);
+    return `<rect x="${a.x}" y="${a.y}" width="${a.w}" height="${a.h}" fill="var(--section)" stroke="var(--section-line)" stroke-width="3"/>
+      <text x="${a.x + a.w/2}" y="${ly}" text-anchor="middle" style="font:600 ${small ? 17 : 22}px var(--mono);letter-spacing:.08em;text-transform:uppercase" fill="var(--muted)">${small ? `${left}/${a.seats.length}` : `${a.name} · ${left} of ${a.seats.length} left`}</text>`;
+  }).join("");
+  const seats = SEATS.map(s => {
+    const isTaken = taken.has(s.id), isPick = current.picked === s.id, isMine = mineHere.has(s.id);
+    const r = s.area.w < 200 ? 30 : 36;
+    const fill = isTaken ? "var(--taken)" : isPick ? "var(--ink)" : "var(--accent)";
+    const ink = isTaken ? "var(--taken-ink)" : isPick ? "var(--ground)" : "var(--accent-ink)";
+    const label = `${seatLabel(s)}, ${isTaken ? (isMine ? "your ticket" : "taken") : isPick ? "selected" : "available"}`;
+    return `<g class="seat ${isTaken ? "taken" : ""}" data-seat="${s.id}" role="button" tabindex="${isTaken ? -1 : 0}" aria-label="${label}" aria-pressed="${isPick}" aria-disabled="${isTaken}">
+      <circle class="ring" cx="${s.x}" cy="${s.y}" r="${r}" fill="${fill}" stroke="${isPick ? "var(--accent)" : "none"}" stroke-width="${isPick ? 8 : 0}"/>
+      ${isTaken
+        ? `<g stroke="var(--taken-ink)" stroke-width="7" stroke-linecap="round"><line x1="${s.x-r*.5}" y1="${s.y-r*.5}" x2="${s.x+r*.5}" y2="${s.y+r*.5}"/><line x1="${s.x+r*.5}" y1="${s.y-r*.5}" x2="${s.x-r*.5}" y2="${s.y+r*.5}"/></g>${isMine ? `<text x="${s.x}" y="${s.y + r + 26}" text-anchor="middle" style="font:600 18px var(--mono);letter-spacing:.1em" fill="var(--accent)">YOURS</text>` : ""}`
+        : `<text x="${s.x}" y="${s.y + 9}" text-anchor="middle" style="font:800 26px var(--body)" fill="${ink}">${s.n}</text>`}
+    </g>`;
+  }).join("");
+  $("#map").innerHTML = `<svg viewBox="${L.view}" role="group" aria-label="Seating map. The stage is at the bottom center.">
+    ${areas}
+    <rect x="${L.stage.x}" y="${L.stage.y}" width="${L.stage.w}" height="${L.stage.h}" fill="var(--stage)"/>
+    <text x="${L.stage.x + L.stage.w/2}" y="${L.stage.y + L.stage.h/2 + 22}" text-anchor="middle" style="font:900 64px var(--display);letter-spacing:.12em" fill="var(--stage-ink)">STAGE</text>
+    ${seats}
+  </svg>`;
+
+  // seats by area (also the keyboard-friendly list)
+  $("#secs").innerHTML = L.areas.map(a => {
+    const left = areaLeft(a);
+    return `<div class="secrow"><span class="n">${a.name}</span><span class="left">${left ? `${left} of ${a.seats.length} left` : "Full"}</span>
+      <div class="chips">${a.seats.map((_, i) => { const id = `${a.id}${i+1}`, t = taken.has(id);
+        return `<button type="button" class="chip" data-seat="${id}" aria-pressed="${current.picked === id}" ${t ? "disabled" : ""} aria-label="${a.name} seat ${i+1}${t ? ", taken" : ""}">${t ? "✕" : i+1}</button>`; }).join("")}</div></div>`;
+  }).join("");
+
+  const totalLeft = SEATS.filter(s => !taken.has(s.id)).length;
+  const p = current.picked && seatById(current.picked);
+  $("#pick").innerHTML = p
+    ? `<div class="label">Your pick</div><h3>${seatLabel(p)}</h3><p>${current.show.name} · ${VENUE_ADDRESS}</p><div class="price">Free</div>`
+    : totalLeft ? `<div class="label">Your pick</div><h3>Pick a seat</h3><p>Tap any pink seat on the map. ${totalLeft} of ${SEATS.length} seats are still open.</p>`
+                : `<div class="label">Sold out</div><h3>Every seat is taken</h3><p class="soldout">All ${SEATS.length} seats have been claimed.</p>`;
+  $("#getTicket").disabled = !p;
+}
+
+/* ---------- claim flow ---------- */
+function openModal(){
+  const s = seatById(current.picked);
+  $("#claimSummary").textContent = `${current.show.name} · ${seatLabel(s)} · Free`;
+  $("#claimStep").hidden = false; $("#doneStep").hidden = true;
+  $("#claimErr").hidden = true; $("#claimBtn").disabled = false; $("#claimBtn").textContent = "Claim free ticket";
+  $("#modal").hidden = false; $("#scrim").hidden = false;
+  setTimeout(() => $("#tName").focus(), 30);
+}
+function closeModal(){ $("#modal").hidden = true; $("#scrim").hidden = true; }
+
+$("#claimForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = $("#tName").value.trim().replace(/\s+/g, " ");
+  const rel = document.querySelector('input[name="rel"]:checked');
+  const err = $("#claimErr");
+  if (!name){ err.textContent = "Type your name so Finn knows who's coming."; err.hidden = false; return $("#tName").focus(); }
+  if (!rel){ err.textContent = "Pick whether you're Finn's friend or family."; err.hidden = false; return; }
+  err.hidden = true;
+  const btn = $("#claimBtn"); btn.disabled = true; btn.textContent = "Claiming…";
+  try {
+    const t = await Store.claim(current.show.id, current.picked, name, rel.value);
+    mine.push(t); saveMine(); renderMine();
+    $("#doneTicket").innerHTML = stubHTML(t);
+    $("#claimStep").hidden = true; $("#doneStep").hidden = false;
+    current.picked = null; renderMap();
+    $("#claimForm").reset();
+  } catch(x){
+    btn.disabled = false; btn.textContent = "Claim free ticket";
+    err.textContent = x && x.code === "taken" ? "Someone just claimed this seat. Close this and pick another one." : "Your ticket didn't go through. Check your connection and try again.";
+    err.hidden = false;
+  }
+});
+
+/* ---------- admin ---------- */
+let adminRows = [], adminUnwatch = null, adminConfirm = null;
+async function openAdmin(){
+  const banner = $("#adminBanner");
+  if (!fb){
+    banner.hidden = false;
+    banner.textContent = "Demo mode: Firebase isn't connected yet, so this shows tickets claimed in this browser only. Add Firebase (see README.md) to see everyone's tickets.";
+    $("#signin").hidden = true; startAdmin();
+    return;
+  }
+  banner.hidden = true;
+  fb.auth.onAuthStateChanged(u => {
+    const ok = u && (!CONFIG.adminEmail || u.email === CONFIG.adminEmail);
+    $("#signin").hidden = !!ok; $("#adminBody").hidden = !ok; $("#signOut").hidden = !ok;
+    if (ok) startAdmin(); else if (adminUnwatch){ adminUnwatch(); adminUnwatch = null; }
+    if (u && !ok){ $("#signinErr").textContent = "That account isn't the admin account."; $("#signinErr").hidden = false; }
+  });
+}
+function startAdmin(){
+  $("#adminBody").hidden = false;
+  if (adminUnwatch) return;
+  adminUnwatch = Store.watchTickets(rows => { adminRows = rows; renderAdmin(); },
+    () => { $("#rows").innerHTML = `<tr><td colspan="7" class="empty">You don't have access to the ticket list. Check the admin email in firestore.rules.</td></tr>`; });
+}
+function renderAdmin(){
+  const q = $("#aSearch").value.trim().toLowerCase();
+  const all = [...adminRows].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const friends = all.filter(t => t.relation === "friend").length, family = all.filter(t => t.relation === "family").length;
+  $("#stats").innerHTML = [
+    [`${all.length}/${SEATS.length}`, "Seats claimed"],
+    [`${SEATS.length - all.length}`, "Seats open"],
+    [friends, "Friends"],
+    [family, "Family"]
+  ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+  const rows = all.filter(t => !q || [t.name, t.seat, t.area, t.code, t.relation].join(" ").toLowerCase().includes(q));
+  if (!rows.length){
+    $("#rows").innerHTML = `<tr><td colspan="7" class="empty">${all.length ? "No tickets match that search." : "No one has claimed a ticket yet."}</td></tr>`;
+    return;
+  }
+  $("#rows").innerHTML = rows.map(t => {
+    const s = seatById(t.seat);
+    return `<tr>
+      <td class="num"><b>${esc(t.seat)}</b></td>
+      <td>${esc(t.area || (s ? s.area.name : ""))}</td>
+      <td>${esc(t.name)}</td>
+      <td><span class="rel ${t.relation === "family" ? "family" : ""}">${t.relation === "family" ? "Family" : "Friend"}</span></td>
+      <td class="num">${new Date(t.createdAt).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" })}</td>
+      <td class="num">${esc(t.code || "")}</td>
+      <td>${adminConfirm === t.id
+        ? `<span class="confirm">Free this seat? <button class="btn" type="button" data-release="${esc(t.id)}" style="padding:6px 10px">Yes, release</button><button class="linkish" type="button" data-cancel>Cancel</button></span>`
+        : `<button class="linkish" type="button" data-ask="${esc(t.id)}">Release seat</button>`}</td>
+    </tr>`;
+  }).join("");
+}
+$("#aSearch").addEventListener("input", renderAdmin);
+$("#copyCsv").addEventListener("click", async () => {
+  const head = ["Seat","Area","Name","Friend or family","Claimed","Ticket code"];
+  const lines = [head, ...adminRows.map(t => [t.seat, t.area, t.name, t.relation, new Date(t.createdAt).toLocaleString(), t.code])]
+    .map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  try { await navigator.clipboard.writeText(lines); toast("Copied. Paste it into a spreadsheet."); }
+  catch(e){ toast("Couldn't copy here. Try a different browser."); }
+});
+$("#signin").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("#signinErr").hidden = true;
+  try { await fb.auth.signInWithEmailAndPassword($("#aEmail").value.trim(), $("#aPass").value); }
+  catch(x){ $("#signinErr").textContent = "That email and password didn't match. Try again."; $("#signinErr").hidden = false; }
+});
+$("#signOut").addEventListener("click", () => fb && fb.auth.signOut());
+
+/* ---------- clicks ---------- */
+document.addEventListener("click", async e => {
+  const seat = e.target.closest("[data-seat]");
+  if (seat && current.view === "event"){
+    const id = seat.dataset.seat;
+    if (current.taken.has(id)) return toast("That seat is taken.");
+    current.picked = current.picked === id ? null : id; renderMap(); return;
+  }
+  if (e.target.closest("[data-close]") || e.target === $("#scrim")) return closeModal();
+  if (e.target.closest("[data-ask]")){ adminConfirm = e.target.closest("[data-ask]").dataset.ask; return renderAdmin(); }
+  if (e.target.closest("[data-cancel]")){ adminConfirm = null; return renderAdmin(); }
+  const rel = e.target.closest("[data-release]");
+  if (rel){
+    try { await Store.release(rel.dataset.release); adminConfirm = null; toast("Seat released"); }
+    catch(x){ toast("Couldn't release that seat. Try again."); }
+  }
+});
+$("#getTicket").addEventListener("click", () => current.picked && openModal());
+document.addEventListener("keydown", e => {
+  const seat = e.target.closest && e.target.closest("g.seat");
+  if (seat && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); seat.dispatchEvent(new MouseEvent("click", { bubbles:true })); }
+});
+
+/* ---------- test keys: am / pm / auto ---------- */
+let typed = "";
+document.addEventListener("keydown", e => {
+  if (e.target.closest && e.target.closest("input, textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === "Escape") return closeModal();
+  if (e.key.length !== 1) return;
+  typed = (typed + e.key.toLowerCase()).slice(-4);
+  const set = v => { override = v; try { v ? sessionStorage.setItem("pk-side-override", v) : sessionStorage.removeItem("pk-side-override"); } catch(err){} };
+  if (typed.endsWith("am")){ set("pretty"); typed = ""; setSide("pretty"); toast("Switched to AM · Pretty side"); }
+  else if (typed.endsWith("pm")){ set("killer"); typed = ""; setSide("killer"); toast("Switched to PM · Killer side"); }
+  else if (typed.endsWith("auto")){ set(null); typed = ""; setSide(clockSide()); toast("Following the clock again"); }
+});
+
+/* ---------- router ---------- */
+function route(){
+  const h = location.hash.replace("#", "");
+  const isAdmin = h === "admin", isShow = h.startsWith("show-");
+  current.view = isAdmin ? "admin" : isShow ? "event" : "home";
+  $("#view-home").hidden = current.view !== "home";
+  $("#home-body").hidden = current.view !== "home";
+  $("#bandWrap").hidden = current.view !== "home";
+  $("#view-event").hidden = current.view !== "event";
+  $("#view-admin").hidden = current.view !== "admin";
+  if (current.view !== "event" && current.unwatch){ current.unwatch(); current.unwatch = null; }
+  if (isShow) openEvent(h.slice(5));
+  if (isAdmin) openAdmin();
+  if (h === "mine"){ const m = $("#mine"); if (!m.hidden) m.scrollIntoView(); }
+  else window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+
+/* ---------- helpers + boot ---------- */
+function $(s){ return document.querySelector(s); }
+function esc(t){ return String(t ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]); }
+let toastTimer;
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2400); }
+
+(async function boot(){
+  setSide(override || clockSide());
+  renderEvents(); renderMine();
+  try { await initFirebase(); } catch(e){ console.warn("Firebase didn't load; using demo mode.", e); fb = null; }
+  // live "seats open" count on the show list
+  SHOWS.filter(s => !s.ended).forEach(show => Store.watchTaken(show.id, taken => {
+    const el = $("#left-" + show.id);
+    if (el) el.textContent = taken.size >= SEATS.length ? "Sold out" : `${SEATS.length - taken.size} of ${SEATS.length} seats open`;
+  }));
+  route();
+  setInterval(() => { if (!override && clockSide() !== side) setSide(clockSide()); }, 30000);
+})();
+</script>
+</body>
+</html>
