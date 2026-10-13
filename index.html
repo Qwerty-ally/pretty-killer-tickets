@@ -154,6 +154,11 @@ h2.sec{font:900 34px/1 var(--display);margin:44px 0 16px}
 .chip:disabled{border-color:var(--line);color:var(--taken-ink);text-decoration:line-through;cursor:not-allowed}
 .soldout{font:13px/1.4 var(--mono);color:var(--muted)}
 .mode-note{font-size:12px;color:var(--muted);margin:0}
+.admin-map{margin-bottom:16px}
+.admin-map .aseat{cursor:pointer}
+.legend .l-family{background:var(--accent)}
+.legend .l-friend{background:var(--ink)}
+.legend .l-empty{border:2px dashed var(--muted)}
 
 /* modal */
 .scrim{position:fixed;inset:0;background:rgba(20,8,16,.5);z-index:40}
@@ -293,6 +298,11 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
 
     <div id="adminBody" hidden>
       <div class="stats" id="stats"></div>
+      <div class="map-card admin-map">
+        <div class="label" style="margin-bottom:10px">Seat map · Pretty Killer Tour · tap a seat to find it in the list</div>
+        <div id="adminMap"></div>
+        <div class="legend"><span><i class="l-family"></i>Family</span><span><i class="l-friend"></i>Friend</span><span><i class="l-empty"></i>Open</span></div>
+      </div>
       <div class="tools">
         <div class="field"><label class="label" for="aSearch">Search names or seats</label><input id="aSearch" type="search" autocomplete="off"></div>
         <button class="btn ghost" type="button" id="copyCsv">Copy as spreadsheet</button>
@@ -673,6 +683,36 @@ function startAdmin(){
   adminUnwatch = Store.watchTickets(rows => { adminRows = rows; renderAdmin(); },
     () => { $("#rows").innerHTML = `<tr><td colspan="7" class="empty">The ticket list didn't load. Check your connection and reload the page.</td></tr>`; });
 }
+const shortName = n => { const parts = String(n || "").trim().split(/\s+/); const s = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0] || ""; return s.length > 12 ? s.slice(0, 11) + "…" : s; };
+function renderAdminMap(rows){
+  const L = LAYOUT, bySeat = {};
+  rows.filter(t => t.show === "prettykiller").forEach(t => bySeat[t.seat] = t);
+  const areas = L.areas.map(a => {
+    const small = a.w < 200, filled = a.seats.filter((_, i) => bySeat[`${a.id}${i+1}`]).length;
+    return `<rect x="${a.x}" y="${a.y}" width="${a.w}" height="${a.h}" fill="var(--section)" stroke="var(--section-line)" stroke-width="3"/>
+      <text x="${a.x + a.w/2}" y="${a.y + (small ? 24 : 32)}" text-anchor="middle" style="font:600 ${small ? 15 : 20}px var(--mono);letter-spacing:.08em;text-transform:uppercase" fill="var(--muted)">${small ? `${filled}/${a.seats.length}` : `${a.name} · ${filled}/${a.seats.length}`}</text>`;
+  }).join("");
+  const seats = SEATS.map(s => {
+    const t = bySeat[s.id], r = s.area.w < 200 ? 30 : 36, side = s.area.id === "L" || s.area.id === "R";
+    const fill = !t ? "none" : t.relation === "family" ? "var(--accent)" : "var(--ink)";
+    const ink = !t ? "var(--muted)" : t.relation === "family" ? "var(--accent-ink)" : "var(--ground)";
+    const nx = side ? (s.area.id === "L" ? s.x + r + 12 : s.x - r - 12) : s.x;
+    const ny = side ? s.y + 8 : s.y + r + 28;
+    const anchor = side ? (s.area.id === "L" ? "start" : "end") : "middle";
+    return `<g class="aseat" data-aseat="${s.id}" role="button" tabindex="0" aria-label="${esc(seatLabel(s))}: ${t ? esc(t.name) + ", " + t.relation : "open"}">
+      <title>${esc(seatLabel(s))}${t ? ` · ${esc(t.name)} (${t.relation === "family" ? "Family" : "Friend"})` : " · open"}</title>
+      <circle cx="${s.x}" cy="${s.y}" r="${r}" fill="${fill}" stroke="${t ? "none" : "var(--muted)"}" stroke-width="3" stroke-dasharray="${t ? "" : "8 6"}"/>
+      <text x="${s.x}" y="${s.y + 9}" text-anchor="middle" style="font:800 24px var(--body)" fill="${ink}">${esc(s.id)}</text>
+      <text x="${nx}" y="${ny}" text-anchor="${anchor}" style="font:${t ? 800 : 400} 21px var(--body)" fill="${t ? "var(--ink)" : "var(--muted)"}">${t ? esc(shortName(t.name)) : "open"}</text>
+    </g>`;
+  }).join("");
+  $("#adminMap").innerHTML = `<svg viewBox="${L.view}" role="group" aria-label="Seat map with who is sitting where">
+    ${areas}
+    <rect x="${L.stage.x}" y="${L.stage.y}" width="${L.stage.w}" height="${L.stage.h}" fill="var(--stage)"/>
+    <text x="${L.stage.x + L.stage.w/2}" y="${L.stage.y + L.stage.h/2 + 22}" text-anchor="middle" style="font:900 64px var(--display);letter-spacing:.12em" fill="var(--stage-ink)">STAGE</text>
+    ${seats}
+  </svg>`;
+}
 function renderAdmin(){
   const q = $("#aSearch").value.trim().toLowerCase();
   const all = [...adminRows].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -683,6 +723,7 @@ function renderAdmin(){
     [friends, "Friends"],
     [family, "Family"]
   ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+  renderAdminMap(all);
   const rows = all.filter(t => !q || [t.name, t.seat, t.area, t.code, t.relation].join(" ").toLowerCase().includes(q));
   if (!rows.length){
     $("#rows").innerHTML = `<tr><td colspan="7" class="empty">${all.length ? "No tickets match that search." : "No one has claimed a ticket yet."}</td></tr>`;
@@ -720,6 +761,8 @@ document.addEventListener("click", async e => {
     if (current.taken.has(id)) return toast("That seat is taken.");
     current.picked = current.picked === id ? null : id; renderMap(); return;
   }
+  const aseat = e.target.closest("[data-aseat]");
+  if (aseat){ const box = $("#aSearch"); box.value = box.value === aseat.dataset.aseat ? "" : aseat.dataset.aseat; renderAdmin(); return; }
   if (e.target.closest("[data-close]") || e.target === $("#scrim")) return closeModal();
   if (e.target.closest("[data-ask]")){ adminConfirm = e.target.closest("[data-ask]").dataset.ask; return renderAdmin(); }
   if (e.target.closest("[data-cancel]")){ adminConfirm = null; return renderAdmin(); }
@@ -731,7 +774,7 @@ document.addEventListener("click", async e => {
 });
 $("#getTicket").addEventListener("click", () => current.picked && openModal());
 document.addEventListener("keydown", e => {
-  const seat = e.target.closest && e.target.closest("g.seat");
+  const seat = e.target.closest && e.target.closest("g.seat, g.aseat");
   if (seat && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); seat.dispatchEvent(new MouseEvent("click", { bubbles:true })); }
 });
 
