@@ -29,7 +29,7 @@ If Firebase can't load (or the `apiKey` in `CONFIG` is cleared), the site falls 
 
 ## Hosting on GitHub Pages
 
-In the repo on GitHub: **Settings → Pages → Build and deployment → Deploy from a branch → `main` / root → Save**. GitHub shows the site address after a minute or two. On a free GitHub account the repo has to be public for Pages to work.
+GitHub Pages is turned on for the `main` branch, so the site is live at **https://qwerty-ally.github.io/pretty-killer-tickets/** and updates a minute or two after each push. The admin page is **https://qwerty-ally.github.io/pretty-killer-tickets/#admin**.
 
 ## Changing the seats
 
