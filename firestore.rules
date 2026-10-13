@@ -2,7 +2,9 @@ rules_version = '2';
 
 // Firestore security rules for the Pretty Killer ticket site.
 // Upload with: firebase deploy --only firestore:rules
-// The admin email below must match CONFIG.adminEmail in index.html.
+// The admin page has no login, so ticket names are readable by anyone who
+// knows how to query this database. Seats still can't be claimed twice, and
+// nobody can change or delete tickets from the site.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -23,8 +25,9 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // tickets/{show}__{seat}: the private ticket with the person's name.
-    // Anyone can claim (create) one; only the admin can read or release them.
+    // tickets/{show}__{seat}: the ticket with the person's name.
+    // Anyone can claim (create) one and read the list (the admin page has no login).
+    // Releasing a seat is done in the Firebase console.
     match /tickets/{id} {
       allow create: if request.resource.data.keys().hasOnly(["show", "seat", "area", "name", "relation", "code", "createdAt"])
                     && request.resource.data.name is string
@@ -33,7 +36,8 @@ service cloud.firestore {
                     && request.resource.data.relation in ["friend", "family"]
                     && id == request.resource.data.show + "__" + request.resource.data.seat
                     && existsAfter(/databases/$(database)/documents/seats/$(id));
-      allow read, delete: if isAdmin();
+      allow read: if true;
+      allow delete: if isAdmin();
       allow update: if false;
     }
   }

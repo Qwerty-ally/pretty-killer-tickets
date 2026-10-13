@@ -5,7 +5,7 @@ Free ticket site for Finn Shapiro's shows at 15 Freeman Parkway, in the same Pre
 - **The Vintage Tour** (Saturday, September 19, 2026) is shown grayed out, since it has ended.
 - **Pretty Killer Tour** (no set date) has a seat map based on the venue chart. It has 13 seats: Center 3, Left Side 4, Right Side 4, Left Box 1 and Right Box 1. One ticket works for both the Pretty and the Killer side.
 - To get a ticket, pick a seat, enter your name and choose **Friend** or **Family**. Claimed seats get an ✕ and nobody else can take them.
-- **Admin:** open the site with `#admin` at the end of the address, like `https://…/index.html#admin`. Nothing on the site links there.
+- **Admin:** open **https://qwerty-ally.github.io/pretty-killer-tickets/#finn-admin-tf49bh5u96**. There's no login, and nothing on the site links there. Change the link with `CONFIG.adminLink` in `index.html`.
 - **Testing:** type `am` or `pm` anywhere on the page to switch sides, and `auto` to follow the clock again.
 
 ## Firebase
@@ -14,22 +14,14 @@ The site is connected to the Firebase project **finn-pretty-killer-tix** (Firest
 
 - Each seat is one document, so a seat can only be claimed once.
 - Anyone can see which seats are taken, but not who took them.
-- Only the admin account (`finnshapiro49@gmail.com`) can read names or release seats.
-
-**One-time admin setup (in the Firebase console):**
-
-1. Open [the project's Authentication page](https://console.firebase.google.com/project/finn-pretty-killer-tix/authentication).
-2. Click **Get started → Email/Password → Enable → Save**.
-3. Go to **Users → Add user**, enter `finnshapiro49@gmail.com` and a password of your choice.
-4. Open the site with `#admin` on the end and sign in with that email and password.
-
-To use a different admin email, change `CONFIG.adminEmail` in `index.html` and the email in `firestore.rules`, then run `firebase deploy --only firestore:rules`.
+- The admin page has no login. It opens only from the secret link above, but the ticket list (names and friend/family) can be read by anyone who knows how to query the database directly.
+- Nobody can change or delete tickets from the site. To free a seat, open [Firestore in the Firebase console](https://console.firebase.google.com/project/finn-pretty-killer-tix/firestore) and delete the seat's document in both `seats` and `tickets` (for example `prettykiller__C2`).
 
 If Firebase can't load (or the `apiKey` in `CONFIG` is cleared), the site falls back to **demo mode**, where tickets save only in the current browser.
 
 ## Hosting on GitHub Pages
 
-GitHub Pages is turned on for the `main` branch, so the site is live at **https://qwerty-ally.github.io/pretty-killer-tickets/** and updates a minute or two after each push. The admin page is **https://qwerty-ally.github.io/pretty-killer-tickets/#admin**.
+GitHub Pages is turned on for the `main` branch, so the site is live at **https://qwerty-ally.github.io/pretty-killer-tickets/** and updates a minute or two after each push. The admin page is **https://qwerty-ally.github.io/pretty-killer-tickets/#finn-admin-tf49bh5u96**.
 
 ## Changing the seats
 

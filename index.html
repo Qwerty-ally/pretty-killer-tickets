@@ -282,7 +282,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
     </div>
   </section>
 
-  <!-- ADMIN (only reachable through the #admin link) -->
+  <!-- ADMIN (only reachable through the secret CONFIG.adminLink link, no login) -->
   <section id="view-admin" hidden>
     <div class="admin-top">
       <div><div class="label">Admin</div><h1>All tickets</h1></div>
@@ -290,20 +290,12 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
     </div>
     <div class="banner" id="adminBanner" hidden></div>
 
-    <form id="signin" class="claim" style="max-width:420px" hidden>
-      <p style="margin:0">Sign in with your Firebase admin account to see who has tickets.</p>
-      <div class="field"><label class="label" for="aEmail">Email</label><input id="aEmail" type="email" autocomplete="username" required></div>
-      <div class="field"><label class="label" for="aPass">Password</label><input id="aPass" type="password" autocomplete="current-password" required></div>
-      <p class="err" id="signinErr" hidden></p>
-      <button class="btn" type="submit">Sign in</button>
-    </form>
 
     <div id="adminBody" hidden>
       <div class="stats" id="stats"></div>
       <div class="tools">
         <div class="field"><label class="label" for="aSearch">Search names or seats</label><input id="aSearch" type="search" autocomplete="off"></div>
         <button class="btn ghost" type="button" id="copyCsv">Copy as spreadsheet</button>
-        <button class="btn ghost" type="button" id="signOut" hidden>Sign out</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -367,9 +359,10 @@ const CONFIG = {
     messagingSenderId: "766285108634",
     appId: "1:766285108634:web:319555acceba99326b5623"
   },
-  // The email of the Firebase Auth account allowed to see all tickets.
-  // The same email is in firestore.rules.
-  adminEmail: "finnshapiro49@gmail.com"
+  // The admin page has no login. It opens only from this secret link:
+  //   https://qwerty-ally.github.io/pretty-killer-tickets/#finn-admin-tf49bh5u96
+  // Change this word to change the link.
+  adminLink: "finn-admin-tf49bh5u96"
 };
 
 /* =====================================================================
@@ -412,7 +405,7 @@ const Demo = {
 };
 window.addEventListener("storage", e => { if (e.key === DEMO_KEY) Demo.notify(); });
 
-let fb = null; // { db, auth }
+let fb = null; // { db }
 function loadScript(src){
   return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
 }
@@ -420,9 +413,9 @@ async function initFirebase(){
   if (!firebaseOn() || fb) return fb;
   const base = "https://www.gstatic.com/firebasejs/10.12.2/";
   await loadScript(base + "firebase-app-compat.js");
-  await Promise.all([loadScript(base + "firebase-firestore-compat.js"), loadScript(base + "firebase-auth-compat.js")]);
+  await loadScript(base + "firebase-firestore-compat.js");
   firebase.initializeApp(CONFIG.firebase);
-  fb = { db: firebase.firestore(), auth: firebase.auth() };
+  fb = { db: firebase.firestore() };
   return fb;
 }
 const ticketId = (show, seat) => `${show}__${seat}`;
@@ -670,25 +663,15 @@ $("#claimForm").addEventListener("submit", async e => {
 let adminRows = [], adminUnwatch = null, adminConfirm = null;
 async function openAdmin(){
   const banner = $("#adminBanner");
-  if (!fb){
-    banner.hidden = false;
-    banner.textContent = "Demo mode: Firebase isn't connected yet, so this shows tickets claimed in this browser only. Add Firebase (see README.md) to see everyone's tickets.";
-    $("#signin").hidden = true; startAdmin();
-    return;
-  }
-  banner.hidden = true;
-  fb.auth.onAuthStateChanged(u => {
-    const ok = u && (!CONFIG.adminEmail || u.email === CONFIG.adminEmail);
-    $("#signin").hidden = !!ok; $("#adminBody").hidden = !ok; $("#signOut").hidden = !ok;
-    if (ok) startAdmin(); else if (adminUnwatch){ adminUnwatch(); adminUnwatch = null; }
-    if (u && !ok){ $("#signinErr").textContent = "That account isn't the admin account."; $("#signinErr").hidden = false; }
-  });
+  banner.hidden = !!fb;
+  if (!fb) banner.textContent = "Demo mode: Firebase isn't connected, so this shows tickets claimed in this browser only.";
+  startAdmin();
 }
 function startAdmin(){
   $("#adminBody").hidden = false;
   if (adminUnwatch) return;
   adminUnwatch = Store.watchTickets(rows => { adminRows = rows; renderAdmin(); },
-    () => { $("#rows").innerHTML = `<tr><td colspan="7" class="empty">You don't have access to the ticket list. Check the admin email in firestore.rules.</td></tr>`; });
+    () => { $("#rows").innerHTML = `<tr><td colspan="7" class="empty">The ticket list didn't load. Check your connection and reload the page.</td></tr>`; });
 }
 function renderAdmin(){
   const q = $("#aSearch").value.trim().toLowerCase();
@@ -714,7 +697,7 @@ function renderAdmin(){
       <td><span class="rel ${t.relation === "family" ? "family" : ""}">${t.relation === "family" ? "Family" : "Friend"}</span></td>
       <td class="num">${new Date(t.createdAt).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" })}</td>
       <td class="num">${esc(t.code || "")}</td>
-      <td>${adminConfirm === t.id
+      <td>${fb ? "" : adminConfirm === t.id
         ? `<span class="confirm">Free this seat? <button class="btn" type="button" data-release="${esc(t.id)}" style="padding:6px 10px">Yes, release</button><button class="linkish" type="button" data-cancel>Cancel</button></span>`
         : `<button class="linkish" type="button" data-ask="${esc(t.id)}">Release seat</button>`}</td>
     </tr>`;
@@ -728,13 +711,6 @@ $("#copyCsv").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(lines); toast("Copied. Paste it into a spreadsheet."); }
   catch(e){ toast("Couldn't copy here. Try a different browser."); }
 });
-$("#signin").addEventListener("submit", async e => {
-  e.preventDefault();
-  $("#signinErr").hidden = true;
-  try { await fb.auth.signInWithEmailAndPassword($("#aEmail").value.trim(), $("#aPass").value); }
-  catch(x){ $("#signinErr").textContent = "That email and password didn't match. Try again."; $("#signinErr").hidden = false; }
-});
-$("#signOut").addEventListener("click", () => fb && fb.auth.signOut());
 
 /* ---------- clicks ---------- */
 document.addEventListener("click", async e => {
@@ -775,7 +751,7 @@ document.addEventListener("keydown", e => {
 /* ---------- router ---------- */
 function route(){
   const h = location.hash.replace("#", "");
-  const isAdmin = h === "admin", isShow = h.startsWith("show-");
+  const isAdmin = !!CONFIG.adminLink && h === CONFIG.adminLink, isShow = h.startsWith("show-");
   current.view = isAdmin ? "admin" : isShow ? "event" : "home";
   $("#view-home").hidden = current.view !== "home";
   $("#home-body").hidden = current.view !== "home";
