@@ -353,21 +353,23 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
 
 <script>
 /* =====================================================================
-   CONFIG — add Firebase later (see README.md). Until then the site runs
-   in DEMO MODE: tickets are saved in this browser only.
+   CONFIG — Firebase is connected (project finn-pretty-killer-tix).
+   Clear the apiKey to fall back to DEMO MODE (tickets saved in this browser only).
    ===================================================================== */
 const CONFIG = {
+  // Firebase web config. These values are meant to be public; the security
+  // rules in firestore.rules are what protect the ticket data.
   firebase: {
-    apiKey: "",
-    authDomain: "",
-    projectId: "",
-    storageBucket: "",
-    messagingSenderId: "",
-    appId: ""
+    apiKey: "AIzaSyDwUNNHtLV-SBcfA00O5lSNW9QlBHR8RKI",
+    authDomain: "finn-pretty-killer-tix.firebaseapp.com",
+    projectId: "finn-pretty-killer-tix",
+    storageBucket: "finn-pretty-killer-tix.firebasestorage.app",
+    messagingSenderId: "766285108634",
+    appId: "1:766285108634:web:319555acceba99326b5623"
   },
   // The email of the Firebase Auth account allowed to see all tickets.
-  // Put the same email in firestore.rules.
-  adminEmail: ""
+  // The same email is in firestore.rules.
+  adminEmail: "finnshapiro49@gmail.com"
 };
 
 /* =====================================================================
