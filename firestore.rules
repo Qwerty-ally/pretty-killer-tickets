@@ -9,6 +9,21 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // "Can't make it": the ticket holder's device keeps a secret key; only its
+    // SHA-256 (keyHash) is stored. Writing the matching key into cancelKey, and
+    // nothing else, unlocks deleting that seat and ticket.
+    function keyMatches(key, hash) {
+      return key is string && hash is string
+          && hashing.sha256(key).toHexString().lower() == hash.lower();
+    }
+    function onlyAddsCancelKey() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(["cancelKey"])
+          && keyMatches(request.resource.data.cancelKey, resource.data.keyHash);
+    }
+    function cancelUnlocked() {
+      return "cancelKey" in resource.data && keyMatches(resource.data.cancelKey, resource.data.keyHash);
+    }
+
     function isAdmin() {
       return request.auth != null && request.auth.token.email == "finnshapiro49@gmail.com";
     }
@@ -18,18 +33,18 @@ service cloud.firestore {
     // counts as an update, which is refused, so each seat goes to one person.
     match /seats/{id} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasOnly(["show", "seat", "takenAt"])
+      allow create: if request.resource.data.keys().hasOnly(["show", "seat", "takenAt", "keyHash"])
                     && id == request.resource.data.show + "__" + request.resource.data.seat
                     && existsAfter(/databases/$(database)/documents/tickets/$(id));
-      allow update: if false;
-      allow delete: if isAdmin();
+      allow update: if onlyAddsCancelKey();
+      allow delete: if isAdmin() || cancelUnlocked();
     }
 
     // tickets/{show}__{seat}: the ticket with the person's name.
     // Anyone can claim (create) one and read the list (the admin page has no login).
     // Releasing a seat is done in the Firebase console.
     match /tickets/{id} {
-      allow create: if request.resource.data.keys().hasOnly(["show", "seat", "area", "name", "relation", "code", "createdAt"])
+      allow create: if request.resource.data.keys().hasOnly(["show", "seat", "area", "name", "relation", "code", "createdAt", "keyHash"])
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
                     && request.resource.data.name.size() <= 60
@@ -37,8 +52,8 @@ service cloud.firestore {
                     && id == request.resource.data.show + "__" + request.resource.data.seat
                     && existsAfter(/databases/$(database)/documents/seats/$(id));
       allow read: if true;
-      allow delete: if isAdmin();
-      allow update: if false;
+      allow update: if onlyAddsCancelKey();
+      allow delete: if isAdmin() || cancelUnlocked();
     }
   }
 }

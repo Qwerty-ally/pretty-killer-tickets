@@ -206,6 +206,29 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .empty{color:var(--muted);text-align:center;padding:32px}
 .banner{font-size:13px;padding:10px 12px;border:1.5px dashed var(--accent);border-radius:var(--radius);margin-bottom:16px;background:var(--surface)}
 
+/* vintage memories */
+.event.ended.memories{opacity:.75}
+.event.ended.memories:hover{filter:none;opacity:1}
+.event.ended.memories .btn{pointer-events:auto}
+.slides{position:relative;height:min(72vh,680px);background:#efe6d2;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;opacity:0;transition:opacity .8s ease}
+.slide.on{opacity:1}
+.slide img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.slide.cover img{max-height:calc(100% - 64px)}
+.slide.cover p{margin:0;font:clamp(18px,3vw,28px)/1.2 "Special Elite","Courier New",monospace;color:#2b2118;text-align:center}
+.dots{display:flex;gap:8px;justify-content:center;margin-top:12px}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--line);display:block}
+.dots i.on{background:var(--accent)}
+.memo-bar{position:sticky;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;gap:10px;justify-content:center;margin-block:18px 56px;z-index:5}
+.memo-bar .btn{min-width:150px;box-shadow:var(--shadow)}
+.video-modal{width:min(920px,calc(100% - 32px))}
+.vids{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.vids figure{margin:0;display:flex;flex-direction:column;gap:6px}
+.vids video{width:100%;max-height:60vh;background:#000;border-radius:var(--radius);display:block}
+.vids.one{grid-template-columns:1fr}
+.vids figcaption{font:12px/1.2 var(--mono);color:var(--muted)}
+.giveback{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;margin-top:4px}
+
 footer{border-top:1px solid var(--line);padding-block:24px 40px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;background:var(--surface);color:var(--ink);font-family:var(--mono)}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--ground);padding:10px 18px;border-radius:var(--radius);font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
@@ -287,6 +310,25 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
     </div>
   </section>
 
+  <!-- VINTAGE TOUR MEMORIES -->
+  <section id="view-vintage" hidden>
+    <a class="back" href="#">← All shows</a>
+    <div class="ev-head">
+      <div>
+        <div class="label">Saturday, September 19, 2026 · 15 Freeman Parkway</div>
+        <h1>The Vintage Tour</h1>
+        <p>Memories from the show.</p>
+      </div>
+      <button class="btn ghost" type="button" id="soundBtn" aria-pressed="true">Sound on</button>
+    </div>
+    <div class="slides" id="slides" aria-roledescription="slideshow" aria-label="Vintage Tour photos"></div>
+    <div class="dots" id="dots" aria-hidden="true"></div>
+    <div class="memo-bar">
+      <button class="btn" type="button" data-videos="bts">BTS</button>
+      <button class="btn" type="button" data-videos="live">Countdown Live</button>
+    </div>
+  </section>
+
   <!-- ADMIN (only reachable through the secret CONFIG.adminLink link, no login) -->
   <section id="view-admin" hidden>
     <div class="admin-top">
@@ -351,6 +393,12 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
   </div>
 </section>
 
+<!-- videos modal (BTS / Countdown Live) -->
+<section class="modal video-modal" id="vmodal" hidden aria-label="Videos">
+  <header><h2 id="vTitle">BTS</h2><button class="x" type="button" data-vclose aria-label="Close">×</button></header>
+  <div class="vids" id="vids"></div>
+</section>
+
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -381,7 +429,7 @@ const CONFIG = {
    ===================================================================== */
 const VENUE_ADDRESS = "15 Freeman Parkway";
 const SHOWS = [
-  { id:"vintage", name:"The Vintage Tour", month:"Sep", day:"19", when:"Saturday, September 19, 2026", ended:true },
+  { id:"vintage", name:"The Vintage Tour", month:"Sep", day:"19", when:"Saturday, September 19, 2026", ended:true, memories:true },
   { id:"prettykiller", name:"Pretty Killer Tour", month:"No date", day:"PK", when:"No set date", ended:false }
 ];
 const LAYOUT = {
@@ -438,25 +486,38 @@ const Store = {
       .onSnapshot(snap => cb(new Set(snap.docs.map(d => d.data().seat))), () => cb(new Set()));
   },
   async claim(show, seat, name, relation){
-    const s = seatById(seat), code = makeCode();
-    const t = { show, seat, area:s.area.name, name, relation, code };
+    const s = seatById(seat), code = makeCode(), key = makeKey(), keyHash = await sha256(key);
+    const t = { show, seat, area:s.area.name, name, relation, code, keyHash };
     const id = ticketId(show, seat);
     if (!fb){
       const all = Demo.read();
       if (all[id]) throw { code:"taken" };
       all[id] = { ...t, createdAt: Date.now() };
       Demo.write(all);
-      return { id, ...t, createdAt: Date.now() };
+      return { id, ...t, key, createdAt: Date.now() };
     }
     const now = firebase.firestore.FieldValue.serverTimestamp();
     const batch = fb.db.batch();
     // If the seat already exists this write is an update, which the rules refuse,
     // so the whole batch fails and nobody can take a claimed seat.
-    batch.set(fb.db.collection("seats").doc(id), { show, seat, takenAt: now });
+    batch.set(fb.db.collection("seats").doc(id), { show, seat, keyHash, takenAt: now });
     batch.set(fb.db.collection("tickets").doc(id), { ...t, createdAt: now });
     try { await batch.commit(); }
     catch(e){ throw { code: e && e.code === "permission-denied" ? "taken" : "error" }; }
-    return { id, ...t, createdAt: Date.now() };
+    return { id, ...t, key, createdAt: Date.now() };
+  },
+  // "Can't make it": the ticket holder proves it's theirs with the key saved on their device
+  async giveBack(t){
+    if (!fb){ const all = Demo.read(); delete all[t.id]; Demo.write(all); return; }
+    if (!t.key) throw { code:"nokey" };
+    const seatRef = fb.db.collection("seats").doc(t.id), ticketRef = fb.db.collection("tickets").doc(t.id);
+    const mark = fb.db.batch();
+    mark.update(seatRef, { cancelKey: t.key });
+    mark.update(ticketRef, { cancelKey: t.key });
+    await mark.commit();
+    const del = fb.db.batch();
+    del.delete(seatRef); del.delete(ticketRef);
+    await del.commit();
   },
   // admin: every ticket with names
   watchTickets(cb, onErr){
@@ -473,6 +534,11 @@ const Store = {
     await batch.commit();
   }
 };
+function makeKey(){ return Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join(""); }
+async function sha256(text){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("");
+}
 function makeCode(){
   const abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let c = ""; const r = crypto.getRandomValues(new Uint32Array(6));
@@ -544,23 +610,24 @@ const current = { view:"home", show:null, picked:null, taken:new Set(), unwatch:
 
 function renderEvents(){
   $("#events").innerHTML = SHOWS.map(s => `
-    <article class="event ${s.ended ? "ended" : ""}">
+    <article class="event ${s.ended ? "ended" : ""} ${s.memories ? "memories" : ""}">
       <div class="date"><span>${s.month}</span><b>${s.day}</b></div>
       <div>
         <h3>${s.name}</h3>
         <div class="meta">${s.when} · ${VENUE_ADDRESS}</div>
         <div class="tags">${s.ended ? `<span class="tag">This show has ended</span>` : `<span class="tag hot">Free</span><span class="tag">Same ticket for Pretty + Killer</span><span class="tag" id="left-${s.id}">${SEATS.length} seats</span>`}</div>
       </div>
-      <div class="go">${s.ended ? `<span class="btn" aria-disabled="true">Ended</span>` : `<a class="btn" href="#show-${s.id}">Find tickets</a>`}</div>
+      <div class="go">${s.memories ? `<a class="btn" href="#vintage" data-memories>See memories</a>` : s.ended ? `<span class="btn" aria-disabled="true">Ended</span>` : `<a class="btn" href="#show-${s.id}">Find tickets</a>`}</div>
     </article>`).join("");
 }
 
 function renderMine(){
   $("#myCount").textContent = mine.length;
   $("#mine").hidden = !mine.length;
-  $("#stubs").innerHTML = mine.map(stubHTML).join("");
+  $("#stubs").innerHTML = mine.map(t => stubHTML(t, true)).join("");
 }
-function stubHTML(t){
+let giveBackAsk = null;
+function stubHTML(t, withGiveBack){
   const s = seatById(t.seat), show = showById(t.show);
   return `<div class="stub">
     <div class="main">
@@ -568,6 +635,9 @@ function stubHTML(t){
       <h4>${esc(s ? seatLabel(s) : t.seat)}</h4>
       <div class="row"><div><b>Name</b>${esc(t.name)}</div><div><b>Guest of Finn</b>${t.relation === "family" ? "Family" : "Friend"}</div></div>
       <div class="row"><div><b>Ticket code</b><span class="code">${esc(t.code)}</span></div></div>
+      ${!withGiveBack ? "" : giveBackAsk === t.id
+        ? `<div class="giveback">Give your seat back so someone else can come? <button class="btn" type="button" data-giveback-yes="${esc(t.id)}" style="padding:6px 10px">Yes, give it back</button><button class="linkish" type="button" data-giveback-no>Keep my ticket</button></div>`
+        : (t.key || !fb) ? `<div class="giveback"><button class="linkish" type="button" data-giveback="${esc(t.id)}">Can't make it?</button></div>` : ""}
     </div>
     <div class="side">Admit one</div>
   </div>`;
@@ -753,6 +823,82 @@ $("#copyCsv").addEventListener("click", async () => {
   catch(e){ toast("Couldn't copy here. Try a different browser."); }
 });
 
+/* ---------- Vintage Tour memories ---------- */
+// Photos show 5 seconds each and loop; the album cover closes each loop.
+// The song plays only during the photo slideshow (it pauses while videos are open).
+const MEDIA = "media/vintage/";
+const SLIDES = [
+  { src: MEDIA + "photo-1.jpg", alt: "Finn and friends at the Vintage Tour, holding Vintage stickers" },
+  { src: MEDIA + "photo-2.jpg", alt: "Close-up of Finn at the Vintage Tour" },
+  { src: MEDIA + "cover.jpg", alt: "Vintage album cover by Finn Shapiro", cover: true, caption: "Vintage will be remembered" }
+];
+const VIDEOS = {
+  bts:  { title: "BTS", list: [
+    { src: MEDIA + "bts-1.mp4", poster: MEDIA + "bts-1.jpg", label: "BTS · 0:06" },
+    { src: MEDIA + "bts-2.mp4", poster: MEDIA + "bts-2.jpg", label: "BTS · 0:01" },
+    { src: MEDIA + "bts-3.mp4", poster: MEDIA + "bts-3.jpg", label: "BTS · 0:34" } ] },
+  live: { title: "Countdown Live", list: [
+    { src: MEDIA + "live-1.mp4", poster: MEDIA + "live-1.jpg", label: "Countdown Live · 3:45" } ] }
+};
+const song = new Audio(MEDIA + "song.mp3");
+song.loop = true;
+let soundOn = true, slideIdx = 0, slideTimer = null, videosOpen = false;
+
+function renderSlides(){
+  $("#slides").innerHTML = SLIDES.map((sl, i) => `
+    <div class="slide ${sl.cover ? "cover" : ""} ${i === slideIdx ? "on" : ""}" aria-hidden="${i !== slideIdx}">
+      <img src="${sl.src}" alt="${esc(sl.alt)}" ${i ? 'loading="lazy"' : ""}>
+      ${sl.caption ? `<p>${esc(sl.caption)}</p>` : ""}
+    </div>`).join("");
+  $("#dots").innerHTML = SLIDES.map((_, i) => `<i class="${i === slideIdx ? "on" : ""}"></i>`).join("");
+}
+function showSlide(i){
+  slideIdx = i % SLIDES.length;
+  document.querySelectorAll("#slides .slide").forEach((el, n) => { el.classList.toggle("on", n === slideIdx); el.setAttribute("aria-hidden", n !== slideIdx); });
+  document.querySelectorAll("#dots i").forEach((el, n) => el.classList.toggle("on", n === slideIdx));
+}
+function playSong(){
+  if (!soundOn || videosOpen || current.view !== "vintage") return;
+  song.play().catch(() => { soundOn = false; updateSoundBtn(); });
+}
+function updateSoundBtn(){
+  const b = $("#soundBtn");
+  b.textContent = soundOn ? "Sound on" : "Play music";
+  b.setAttribute("aria-pressed", soundOn);
+}
+function openMemories(){
+  slideIdx = 0; renderSlides();
+  clearInterval(slideTimer);
+  slideTimer = setInterval(() => showSlide(slideIdx + 1), 5000);
+  updateSoundBtn(); playSong();
+}
+function closeMemories(){
+  clearInterval(slideTimer); slideTimer = null;
+  song.pause();
+  closeVideos();
+}
+function openVideos(kind){
+  const v = VIDEOS[kind];
+  videosOpen = true; song.pause();
+  $("#vTitle").textContent = v.title;
+  const vids = $("#vids");
+  vids.classList.toggle("one", v.list.length === 1);
+  vids.innerHTML = v.list.map(x => `<figure><video src="${x.src}" poster="${x.poster}" controls playsinline preload="metadata"></video><figcaption>${esc(x.label)}</figcaption></figure>`).join("");
+  $("#vmodal").hidden = false; $("#scrim").hidden = false;
+}
+function closeVideos(){
+  if (!videosOpen) return;
+  videosOpen = false;
+  document.querySelectorAll("#vids video").forEach(v => v.pause());
+  $("#vids").innerHTML = "";
+  $("#vmodal").hidden = true; $("#scrim").hidden = true;
+  playSong();
+}
+$("#soundBtn").addEventListener("click", () => {
+  soundOn = !soundOn; updateSoundBtn();
+  if (soundOn) playSong(); else song.pause();
+});
+
 /* ---------- clicks ---------- */
 document.addEventListener("click", async e => {
   const seat = e.target.closest("[data-seat]");
@@ -763,6 +909,26 @@ document.addEventListener("click", async e => {
   }
   const aseat = e.target.closest("[data-aseat]");
   if (aseat){ const box = $("#aSearch"); box.value = box.value === aseat.dataset.aseat ? "" : aseat.dataset.aseat; renderAdmin(); return; }
+  if (e.target.closest("[data-memories]")){ soundOn = true; song.play().then(() => { if (current.view !== "vintage") song.pause(); }).catch(() => {}); }
+  const vbtn = e.target.closest("[data-videos]");
+  if (vbtn) return openVideos(vbtn.dataset.videos);
+  if (e.target.closest("[data-vclose]") || (e.target === $("#scrim") && videosOpen)) return closeVideos();
+  const gb = e.target.closest("[data-giveback]");
+  if (gb){ giveBackAsk = gb.dataset.giveback; return renderMine(); }
+  if (e.target.closest("[data-giveback-no]")){ giveBackAsk = null; return renderMine(); }
+  const gby = e.target.closest("[data-giveback-yes]");
+  if (gby){
+    const t = mine.find(m => m.id === gby.dataset.givebackYes);
+    if (!t) return;
+    gby.disabled = true; gby.textContent = "Giving it back…";
+    try {
+      await Store.giveBack(t);
+      mine = mine.filter(m => m !== t); saveMine(); giveBackAsk = null; renderMine();
+      if (current.view === "event") renderMap();
+      toast("Your seat is free again. Thanks for letting us know.");
+    } catch(x){ gby.disabled = false; gby.textContent = "Yes, give it back"; toast("That didn't go through. Try again in a moment."); }
+    return;
+  }
   if (e.target.closest("[data-close]") || e.target === $("#scrim")) return closeModal();
   if (e.target.closest("[data-ask]")){ adminConfirm = e.target.closest("[data-ask]").dataset.ask; return renderAdmin(); }
   if (e.target.closest("[data-cancel]")){ adminConfirm = null; return renderAdmin(); }
@@ -782,7 +948,7 @@ document.addEventListener("keydown", e => {
 let typed = "";
 document.addEventListener("keydown", e => {
   if (e.target.closest && e.target.closest("input, textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.key === "Escape") return closeModal();
+  if (e.key === "Escape"){ closeVideos(); return closeModal(); }
   if (e.key.length !== 1) return;
   typed = (typed + e.key.toLowerCase()).slice(-4);
   const set = v => { override = v; try { v ? sessionStorage.setItem("pk-side-override", v) : sessionStorage.removeItem("pk-side-override"); } catch(err){} };
@@ -795,12 +961,16 @@ document.addEventListener("keydown", e => {
 function route(){
   const h = location.hash.replace("#", "");
   const isAdmin = !!CONFIG.adminLink && h === CONFIG.adminLink, isShow = h.startsWith("show-");
-  current.view = isAdmin ? "admin" : isShow ? "event" : "home";
+  const wasVintage = current.view === "vintage";
+  current.view = isAdmin ? "admin" : isShow ? "event" : h === "vintage" ? "vintage" : "home";
+  if (wasVintage && current.view !== "vintage") closeMemories();
   $("#view-home").hidden = current.view !== "home";
   $("#home-body").hidden = current.view !== "home";
   $("#bandWrap").hidden = current.view !== "home";
   $("#view-event").hidden = current.view !== "event";
   $("#view-admin").hidden = current.view !== "admin";
+  $("#view-vintage").hidden = current.view !== "vintage";
+  if (current.view === "vintage") openMemories();
   if (current.view !== "event" && current.unwatch){ current.unwatch(); current.unwatch = null; }
   if (isShow) openEvent(h.slice(5));
   if (isAdmin) openAdmin();
