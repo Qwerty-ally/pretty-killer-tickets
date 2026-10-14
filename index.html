@@ -156,6 +156,9 @@ h2.sec{font:900 34px/1 var(--display);margin:44px 0 16px}
 .mode-note{font-size:12px;color:var(--muted);margin:0}
 .admin-map{margin-bottom:16px}
 .admin-map .aseat{cursor:pointer}
+.move-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 14px;margin-bottom:12px;border:1.5px dashed var(--accent);border-radius:var(--radius);background:var(--ground-2);font-size:14px}
+.move-bar .btn{padding:7px 12px}
+.row-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .legend .l-family{background:var(--accent)}
 .legend .l-friend{background:var(--ink)}
 .legend .l-empty{border:2px dashed var(--muted)}
@@ -329,7 +332,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
     </div>
   </section>
 
-  <!-- ADMIN (only reachable through the secret CONFIG.adminLink link, no login) -->
+  <!-- ADMIN (only reachable through the private #admin-<secret> link, no login) -->
   <section id="view-admin" hidden>
     <div class="admin-top">
       <div><div class="label">Admin</div><h1>All tickets</h1></div>
@@ -342,6 +345,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
       <div class="stats" id="stats"></div>
       <div class="map-card admin-map">
         <div class="label" style="margin-bottom:10px">Seat map · Pretty Killer Tour · tap a seat to find it in the list</div>
+        <div class="move-bar" id="moveBar" hidden></div>
         <div id="adminMap"></div>
         <div class="legend"><span><i class="l-family"></i>Family</span><span><i class="l-friend"></i>Friend</span><span><i class="l-empty"></i>Open</span></div>
       </div>
@@ -417,10 +421,11 @@ const CONFIG = {
     messagingSenderId: "766285108634",
     appId: "1:766285108634:web:319555acceba99326b5623"
   },
-  // The admin page has no login. It opens only from this secret link:
-  //   https://qwerty-ally.github.io/pretty-killer-tickets/#finn-admin-tf49bh5u96
-  // Change this word to change the link.
-  adminLink: "finn-admin-tf49bh5u96"
+  // The admin page has no login. It opens from a private link: #admin-<secret>.
+  // Only the SHA-256 of the secret is stored here and in firestore.rules, so
+  // reading this code doesn't reveal the link. The secret also lets the admin
+  // page move people and release seats.
+  adminHash: "c5659178d559cb6a6d9c16dee29e0ae3adc17de94c52925ead21f199415ed7ba"
 };
 
 /* =====================================================================
@@ -526,12 +531,47 @@ const Store = {
       snap => cb(snap.docs.map(d => { const t = d.data(); return { id:d.id, ...t, createdAt: t.createdAt && t.createdAt.toMillis ? t.createdAt.toMillis() : Date.now() }; })),
       e => onErr && onErr(e));
   },
+  // Admin actions. The admin key goes into adminTokens/{id}, which nobody can
+  // read; the rules only allow the delete/move when that token was written in
+  // the same request with the right key.
+  adminToken(batch, id){
+    batch.set(fb.db.collection("adminTokens").doc(id), { key: adminKey, at: firebase.firestore.FieldValue.serverTimestamp() });
+  },
   async release(id){
     if (!fb){ const all = Demo.read(); delete all[id]; Demo.write(all); return; }
     const batch = fb.db.batch();
+    this.adminToken(batch, id);
     batch.delete(fb.db.collection("tickets").doc(id));
     batch.delete(fb.db.collection("seats").doc(id));
     await batch.commit();
+  },
+  async move(t, newSeat){
+    const s = seatById(newSeat), newId = ticketId(t.show, newSeat);
+    if (!fb){
+      const all = Demo.read();
+      if (all[newId]) throw { code:"taken" };
+      const old = all[t.id]; delete all[t.id];
+      all[newId] = { ...old, seat:newSeat, area:s.area.name };
+      Demo.write(all); return;
+    }
+    const seatDoc = { show:t.show, seat:newSeat, takenAt: firebase.firestore.FieldValue.serverTimestamp() };
+    const ticketDoc = { show:t.show, seat:newSeat, area:s.area.name, name:t.name, relation:t.relation, code:t.code,
+      createdAt: t.createdAt ? firebase.firestore.Timestamp.fromMillis(t.createdAt) : firebase.firestore.FieldValue.serverTimestamp() };
+    if (t.keyHash){ seatDoc.keyHash = t.keyHash; ticketDoc.keyHash = t.keyHash; }
+    const batch = fb.db.batch();
+    this.adminToken(batch, t.id);
+    batch.delete(fb.db.collection("tickets").doc(t.id));
+    batch.delete(fb.db.collection("seats").doc(t.id));
+    batch.set(fb.db.collection("seats").doc(newId), seatDoc);
+    batch.set(fb.db.collection("tickets").doc(newId), ticketDoc);
+    try { await batch.commit(); }
+    catch(e){ throw { code: e && e.code === "permission-denied" ? "taken" : "error" }; }
+  },
+  // used to keep "My tickets" right after the admin moves or releases a seat
+  async findByCode(code){
+    if (!fb){ const hit = Object.entries(Demo.read()).find(([, t]) => t.code === code); return hit ? { id: hit[0], ...hit[1] } : null; }
+    const snap = await fb.db.collection("tickets").where("code", "==", code).limit(1).get();
+    return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
   }
 };
 function makeKey(){ return Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join(""); }
@@ -740,7 +780,8 @@ $("#claimForm").addEventListener("submit", async e => {
 });
 
 /* ---------- admin ---------- */
-let adminRows = [], adminUnwatch = null, adminConfirm = null;
+let adminRows = [], adminUnwatch = null, adminConfirm = null, adminKey = null;
+let adminMove = null, adminMoveTo = null;   // ticket id being moved, and the seat picked for it
 async function openAdmin(){
   const banner = $("#adminBanner");
   banner.hidden = !!fb;
@@ -755,7 +796,7 @@ function startAdmin(){
 }
 const shortName = n => { const parts = String(n || "").trim().split(/\s+/); const s = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0] || ""; return s.length > 12 ? s.slice(0, 11) + "…" : s; };
 function renderAdminMap(rows){
-  const L = LAYOUT, bySeat = {};
+  const L = LAYOUT, bySeat = {}, moving = rows.find(t => t.id === adminMove);
   rows.filter(t => t.show === "prettykiller").forEach(t => bySeat[t.seat] = t);
   const areas = L.areas.map(a => {
     const small = a.w < 200, filled = a.seats.filter((_, i) => bySeat[`${a.id}${i+1}`]).length;
@@ -764,16 +805,17 @@ function renderAdminMap(rows){
   }).join("");
   const seats = SEATS.map(s => {
     const t = bySeat[s.id], r = s.area.w < 200 ? 30 : 36, side = s.area.id === "L" || s.area.id === "R";
-    const fill = !t ? "none" : t.relation === "family" ? "var(--accent)" : "var(--ink)";
+    const pickable = moving && !t, picked = !!moving && adminMoveTo === s.id, isMoving = moving && t && t.id === moving.id;
+    const fill = picked ? "var(--accent)" : !t ? "none" : t.relation === "family" ? "var(--accent)" : "var(--ink)";
     const ink = !t ? "var(--muted)" : t.relation === "family" ? "var(--accent-ink)" : "var(--ground)";
     const nx = side ? (s.area.id === "L" ? s.x + r + 12 : s.x - r - 12) : s.x;
     const ny = side ? s.y + 8 : s.y + r + 28;
     const anchor = side ? (s.area.id === "L" ? "start" : "end") : "middle";
     return `<g class="aseat" data-aseat="${s.id}" role="button" tabindex="0" aria-label="${esc(seatLabel(s))}: ${t ? esc(t.name) + ", " + t.relation : "open"}">
       <title>${esc(seatLabel(s))}${t ? ` · ${esc(t.name)} (${t.relation === "family" ? "Family" : "Friend"})` : " · open"}</title>
-      <circle cx="${s.x}" cy="${s.y}" r="${r}" fill="${fill}" stroke="${t ? "none" : "var(--muted)"}" stroke-width="3" stroke-dasharray="${t ? "" : "8 6"}"/>
+      <circle cx="${s.x}" cy="${s.y}" r="${r}" fill="${fill}" stroke="${isMoving || picked ? "var(--accent)" : pickable ? "var(--accent)" : t ? "none" : "var(--muted)"}" stroke-width="${isMoving || picked ? 10 : pickable ? 5 : 3}" stroke-dasharray="${t || pickable || picked ? "" : "8 6"}" opacity="${isMoving ? .55 : 1}"/>
       <text x="${s.x}" y="${s.y + 9}" text-anchor="middle" style="font:800 24px var(--body)" fill="${ink}">${esc(s.id)}</text>
-      <text x="${nx}" y="${ny}" text-anchor="${anchor}" style="font:${t ? 800 : 400} 21px var(--body)" fill="${t ? "var(--ink)" : "var(--muted)"}">${t ? esc(shortName(t.name)) : "open"}</text>
+      <text x="${nx}" y="${ny}" text-anchor="${anchor}" style="font:${t || picked ? 800 : 400} 21px var(--body)" fill="${t || picked ? "var(--ink)" : pickable ? "var(--accent)" : "var(--muted)"}">${picked ? esc(shortName(moving.name)) + "?" : t ? esc(shortName(t.name)) : pickable ? "move here" : "open"}</text>
     </g>`;
   }).join("");
   $("#adminMap").innerHTML = `<svg viewBox="${L.view}" role="group" aria-label="Seat map with who is sitting where">
@@ -794,6 +836,15 @@ function renderAdmin(){
     [family, "Family"]
   ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
   renderAdminMap(all);
+  const mv = all.find(t => t.id === adminMove), bar = $("#moveBar");
+  if (adminMove && !mv){ adminMove = null; adminMoveTo = null; }
+  bar.hidden = !mv;
+  if (mv){
+    const from = seatById(mv.seat), to = adminMoveTo && seatById(adminMoveTo);
+    bar.innerHTML = to
+      ? `<span>Move <b>${esc(mv.name)}</b> from ${esc(seatLabel(from))} to <b>${esc(seatLabel(to))}</b>?</span><button class="btn" type="button" data-move-go>Move</button><button class="linkish" type="button" data-move-cancel>Cancel</button>`
+      : `<span>Moving <b>${esc(mv.name)}</b> (${esc(seatLabel(from))}). Tap an open seat on the map.</span><button class="linkish" type="button" data-move-cancel>Cancel</button>`;
+  }
   const rows = all.filter(t => !q || [t.name, t.seat, t.area, t.code, t.relation].join(" ").toLowerCase().includes(q));
   if (!rows.length){
     $("#rows").innerHTML = `<tr><td colspan="7" class="empty">${all.length ? "No tickets match that search." : "No one has claimed a ticket yet."}</td></tr>`;
@@ -808,9 +859,9 @@ function renderAdmin(){
       <td><span class="rel ${t.relation === "family" ? "family" : ""}">${t.relation === "family" ? "Family" : "Friend"}</span></td>
       <td class="num">${new Date(t.createdAt).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" })}</td>
       <td class="num">${esc(t.code || "")}</td>
-      <td>${fb ? "" : adminConfirm === t.id
+      <td>${!fb || adminKey ? (adminConfirm === t.id
         ? `<span class="confirm">Free this seat? <button class="btn" type="button" data-release="${esc(t.id)}" style="padding:6px 10px">Yes, release</button><button class="linkish" type="button" data-cancel>Cancel</button></span>`
-        : `<button class="linkish" type="button" data-ask="${esc(t.id)}">Release seat</button>`}</td>
+        : `<span class="row-actions"><button class="linkish" type="button" data-move="${esc(t.id)}">Move</button><button class="linkish" type="button" data-ask="${esc(t.id)}">Release seat</button></span>`) : ""}</td>
     </tr>`;
   }).join("");
 }
@@ -908,7 +959,24 @@ document.addEventListener("click", async e => {
     current.picked = current.picked === id ? null : id; renderMap(); return;
   }
   const aseat = e.target.closest("[data-aseat]");
+  if (aseat && adminMove){
+    const id = aseat.dataset.aseat, taken = adminRows.some(t => t.show === "prettykiller" && t.seat === id);
+    if (taken) return toast("That seat is taken. Pick an open one.");
+    adminMoveTo = id; return renderAdmin();
+  }
   if (aseat){ const box = $("#aSearch"); box.value = box.value === aseat.dataset.aseat ? "" : aseat.dataset.aseat; renderAdmin(); return; }
+  const mvb = e.target.closest("[data-move]");
+  if (mvb){ adminMove = mvb.dataset.move; adminMoveTo = null; adminConfirm = null; renderAdmin(); $("#adminMap").scrollIntoView({ block:"center" }); return; }
+  if (e.target.closest("[data-move-cancel]")){ adminMove = null; adminMoveTo = null; return renderAdmin(); }
+  const go = e.target.closest("[data-move-go]");
+  if (go){
+    const t = adminRows.find(r => r.id === adminMove), to = adminMoveTo;
+    if (!t || !to) return;
+    go.disabled = true; go.textContent = "Moving…";
+    try { await Store.move(t, to); adminMove = null; adminMoveTo = null; toast(`Moved ${t.name} to ${seatLabel(seatById(to))}`); renderAdmin(); }
+    catch(x){ go.disabled = false; go.textContent = "Move"; toast(x && x.code === "taken" ? "That seat just got taken. Pick another one." : "The move didn't go through. Try again."); }
+    return;
+  }
   if (e.target.closest("[data-memories]")){ soundOn = true; song.play().then(() => { if (current.view !== "vintage") song.pause(); }).catch(() => {}); }
   const vbtn = e.target.closest("[data-videos]");
   if (vbtn) return openVideos(vbtn.dataset.videos);
@@ -958,9 +1026,13 @@ document.addEventListener("keydown", e => {
 });
 
 /* ---------- router ---------- */
-function route(){
+async function route(){
   const h = location.hash.replace("#", "");
-  const isAdmin = !!CONFIG.adminLink && h === CONFIG.adminLink, isShow = h.startsWith("show-");
+  const adminTry = h.startsWith("admin-") ? h.slice(6) : "";
+  let isAdmin = false;
+  if (adminTry && CONFIG.adminHash){ try { isAdmin = (await sha256(adminTry)) === CONFIG.adminHash; } catch(e){} }
+  if (isAdmin) adminKey = adminTry;
+  const isShow = h.startsWith("show-");
   const wasVintage = current.view === "vintage";
   current.view = isAdmin ? "admin" : isShow ? "event" : h === "vintage" ? "vintage" : "home";
   if (wasVintage && current.view !== "vintage") closeMemories();
@@ -985,6 +1057,19 @@ function esc(t){ return String(t ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;",
 let toastTimer;
 function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2400); }
 
+// If the admin moved or released someone's seat, update their saved ticket.
+async function syncMine(){
+  let changed = false;
+  for (const t of [...mine]){
+    if (!t.code) continue;
+    let now;
+    try { now = await Store.findByCode(t.code); } catch(e){ continue; }
+    if (now === null){ mine = mine.filter(m => m !== t); changed = true; }
+    else if (now.id !== t.id){ Object.assign(t, { id: now.id, seat: now.seat, area: now.area }); changed = true; }
+  }
+  if (changed){ saveMine(); renderMine(); }
+}
+
 (async function boot(){
   setSide(override || clockSide());
   renderEvents(); renderMine();
@@ -995,6 +1080,7 @@ function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = fals
     if (el) el.textContent = taken.size >= SEATS.length ? "Sold out" : `${SEATS.length - taken.size} of ${SEATS.length} seats open`;
   }));
   route();
+  syncMine();
   setInterval(() => { if (!override && clockSide() !== side) setSide(clockSide()); }, 30000);
 })();
 </script>

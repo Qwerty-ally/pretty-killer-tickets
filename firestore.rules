@@ -3,8 +3,9 @@ rules_version = '2';
 // Firestore security rules for the Pretty Killer ticket site.
 // Upload with: firebase deploy --only firestore:rules
 // The admin page has no login, so ticket names are readable by anyone who
-// knows how to query this database. Seats still can't be claimed twice, and
-// nobody can change or delete tickets from the site.
+// knows how to query this database. Seats can't be claimed twice. Only the
+// ticket holder ("Can't make it") or the admin (private admin link) can delete
+// or move a ticket.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -24,6 +25,24 @@ service cloud.firestore {
       return "cancelKey" in resource.data && keyMatches(resource.data.cancelKey, resource.data.keyHash);
     }
 
+    // Admin actions (move people, release seats) use the private admin link's
+    // secret. Only its SHA-256 is stored here. The admin page writes the secret
+    // into adminTokens/{id} (which nobody can read) in the same request as the
+    // delete, and the delete checks that token.
+    function isAdminKey(key) {
+      return keyMatches(key, "c5659178d559cb6a6d9c16dee29e0ae3adc17de94c52925ead21f199415ed7ba");
+    }
+    function adminActing(id) {
+      return getAfter(/databases/$(database)/documents/adminTokens/$(id)).data.at == request.time
+          && isAdminKey(getAfter(/databases/$(database)/documents/adminTokens/$(id)).data.key);
+    }
+    match /adminTokens/{id} {
+      allow read: if false;
+      allow write: if request.resource.data.keys().hasOnly(["key", "at"])
+                   && request.resource.data.at == request.time
+                   && isAdminKey(request.resource.data.key);
+    }
+
     function isAdmin() {
       return request.auth != null && request.auth.token.email == "finnshapiro49@gmail.com";
     }
@@ -37,12 +56,11 @@ service cloud.firestore {
                     && id == request.resource.data.show + "__" + request.resource.data.seat
                     && existsAfter(/databases/$(database)/documents/tickets/$(id));
       allow update: if onlyAddsCancelKey();
-      allow delete: if isAdmin() || cancelUnlocked();
+      allow delete: if isAdmin() || cancelUnlocked() || adminActing(id);
     }
 
     // tickets/{show}__{seat}: the ticket with the person's name.
     // Anyone can claim (create) one and read the list (the admin page has no login).
-    // Releasing a seat is done in the Firebase console.
     match /tickets/{id} {
       allow create: if request.resource.data.keys().hasOnly(["show", "seat", "area", "name", "relation", "code", "createdAt", "keyHash"])
                     && request.resource.data.name is string
@@ -53,7 +71,7 @@ service cloud.firestore {
                     && existsAfter(/databases/$(database)/documents/seats/$(id));
       allow read: if true;
       allow update: if onlyAddsCancelKey();
-      allow delete: if isAdmin() || cancelUnlocked();
+      allow delete: if isAdmin() || cancelUnlocked() || adminActing(id);
     }
   }
 }
