@@ -324,7 +324,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
     <div class="slides" id="slides" aria-roledescription="slideshow" aria-label="Vintage Tour photos"></div>
     <div class="dots" id="dots" aria-hidden="true"></div>
     <div class="memo-bar">
-      <button class="btn" type="button" data-videos="bts">BTS</button>
+      <button class="btn" type="button" data-videos="bts">Behind the Scenes</button>
       <button class="btn" type="button" data-videos="live">Countdown Live</button>
     </div>
   </section>
@@ -395,7 +395,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
 
 <!-- videos modal (BTS / Countdown Live) -->
 <section class="modal video-modal" id="vmodal" hidden aria-label="Videos">
-  <header><h2 id="vTitle">BTS</h2><button class="x" type="button" data-vclose aria-label="Close">×</button></header>
+  <header><h2 id="vTitle">Behind the Scenes</h2><button class="x" type="button" data-vclose aria-label="Close">×</button></header>
   <div class="vids" id="vids"></div>
 </section>
 
@@ -833,10 +833,10 @@ const SLIDES = [
   { src: MEDIA + "cover.jpg", alt: "Vintage album cover by Finn Shapiro", cover: true, caption: "Vintage will be remembered" }
 ];
 const VIDEOS = {
-  bts:  { title: "BTS", list: [
-    { src: MEDIA + "bts-1.mp4", poster: MEDIA + "bts-1.jpg", label: "BTS · 0:06" },
-    { src: MEDIA + "bts-2.mp4", poster: MEDIA + "bts-2.jpg", label: "BTS · 0:01" },
-    { src: MEDIA + "bts-3.mp4", poster: MEDIA + "bts-3.jpg", label: "BTS · 0:34" } ] },
+  bts:  { title: "Behind the Scenes", list: [
+    { src: MEDIA + "bts-1.mp4", poster: MEDIA + "bts-1.jpg", label: "Behind the Scenes · 0:06" },
+    { src: MEDIA + "bts-2.mp4", poster: MEDIA + "bts-2.jpg", label: "Behind the Scenes · 0:01" },
+    { src: MEDIA + "bts-3.mp4", poster: MEDIA + "bts-3.jpg", label: "Behind the Scenes · 0:34" } ] },
   live: { title: "Countdown Live", list: [
     { src: MEDIA + "live-1.mp4", poster: MEDIA + "live-1.jpg", label: "Countdown Live · 3:45" } ] }
 };
