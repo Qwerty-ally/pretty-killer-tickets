@@ -62,11 +62,13 @@ service cloud.firestore {
     // tickets/{show}__{seat}: the ticket with the person's name.
     // Anyone can claim (create) one and read the list (the admin page has no login).
     match /tickets/{id} {
-      allow create: if request.resource.data.keys().hasOnly(["show", "seat", "area", "name", "relation", "code", "createdAt", "keyHash"])
+      allow create: if request.resource.data.keys().hasOnly(["show", "seat", "area", "name", "relation", "code", "createdAt", "keyHash", "missMorning", "missNight"])
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
                     && request.resource.data.name.size() <= 60
                     && request.resource.data.relation in ["friend", "family"]
+                    && (!("missMorning" in request.resource.data) || request.resource.data.missMorning is bool)
+                    && (!("missNight" in request.resource.data) || request.resource.data.missNight is bool)
                     && id == request.resource.data.show + "__" + request.resource.data.seat
                     && existsAfter(/databases/$(database)/documents/seats/$(id));
       allow read: if true;

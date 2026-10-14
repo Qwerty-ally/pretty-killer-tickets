@@ -190,7 +190,13 @@ legend{padding:0}
 .admin-top{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between;margin-block:24px 16px}
 .admin-top h1{margin:0;font:900 40px/1 var(--display)}
 [data-side="killer"] .admin-top h1{font-weight:400;text-transform:uppercase}
-.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.checks{display:flex;flex-direction:column;gap:8px}
+.check{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1.5px solid var(--line);border-radius:var(--radius);background:var(--ground-2);cursor:pointer;font-size:15px}
+.check input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent);flex:none}
+.check small{display:block;color:var(--muted);font-size:12px}
+.att{font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;padding:4px 8px;border-radius:var(--radius);border:1px solid var(--line);white-space:nowrap}
+.att.part{border-color:var(--accent);color:var(--accent)}
 .stat{background:var(--surface);padding:14px;border-radius:var(--radius)}
 .stat b{display:block;font:900 30px/1 var(--display);font-variant-numeric:tabular-nums}
 [data-side="killer"] .stat b{font-weight:400}
@@ -355,7 +361,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Seat</th><th>Area</th><th>Name</th><th>Friend or family</th><th>Claimed</th><th>Ticket code</th><th></th></tr></thead>
+          <thead><tr><th>Seat</th><th>Area</th><th>Name</th><th>Friend or family</th><th>Shows</th><th>Claimed</th><th>Ticket code</th><th></th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
       </div>
@@ -383,6 +389,13 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
         <div class="choices">
           <label class="choice"><input type="radio" name="rel" id="relFriend" value="friend"><span>Friend</span></label>
           <label class="choice"><input type="radio" name="rel" id="relFamily" value="family"><span>Family</span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend class="label">Can't make one of the shows? Check any you'll miss (or leave both empty).</legend>
+        <div class="checks">
+          <label class="check"><input type="checkbox" id="missMorning"><span>I can't go to the <b>morning show</b><small>The Pretty side (AM)</small></span></label>
+          <label class="check"><input type="checkbox" id="missNight"><span>I can't go to the <b>night show</b><small>The Killer side (PM)</small></span></label>
         </div>
       </fieldset>
       <p class="err" id="claimErr" hidden></p>
@@ -490,9 +503,9 @@ const Store = {
     return fb.db.collection("seats").where("show", "==", show)
       .onSnapshot(snap => cb(new Set(snap.docs.map(d => d.data().seat))), () => cb(new Set()));
   },
-  async claim(show, seat, name, relation){
+  async claim(show, seat, name, relation, miss = {}){
     const s = seatById(seat), code = makeCode(), key = makeKey(), keyHash = await sha256(key);
-    const t = { show, seat, area:s.area.name, name, relation, code, keyHash };
+    const t = { show, seat, area:s.area.name, name, relation, code, keyHash, missMorning: !!miss.missMorning, missNight: !!miss.missNight };
     const id = ticketId(show, seat);
     if (!fb){
       const all = Demo.read();
@@ -558,6 +571,8 @@ const Store = {
     const ticketDoc = { show:t.show, seat:newSeat, area:s.area.name, name:t.name, relation:t.relation, code:t.code,
       createdAt: t.createdAt ? firebase.firestore.Timestamp.fromMillis(t.createdAt) : firebase.firestore.FieldValue.serverTimestamp() };
     if (t.keyHash){ seatDoc.keyHash = t.keyHash; ticketDoc.keyHash = t.keyHash; }
+    if (typeof t.missMorning === "boolean") ticketDoc.missMorning = t.missMorning;
+    if (typeof t.missNight === "boolean") ticketDoc.missNight = t.missNight;
     const batch = fb.db.batch();
     this.adminToken(batch, t.id);
     batch.delete(fb.db.collection("tickets").doc(t.id));
@@ -666,6 +681,10 @@ function renderMine(){
   $("#mine").hidden = !mine.length;
   $("#stubs").innerHTML = mine.map(t => stubHTML(t, true)).join("");
 }
+// Which shows someone is coming to (one ticket covers both)
+const comingTo = t => !t.missMorning && !t.missNight ? "Morning + night show"
+                    : !t.missMorning ? "Morning show only"
+                    : !t.missNight ? "Night show only" : "Can't make either show";
 let giveBackAsk = null;
 function stubHTML(t, withGiveBack){
   const s = seatById(t.seat), show = showById(t.show);
@@ -674,6 +693,7 @@ function stubHTML(t, withGiveBack){
       <span class="label">${esc(show ? show.name : t.show)} · Free</span>
       <h4>${esc(s ? seatLabel(s) : t.seat)}</h4>
       <div class="row"><div><b>Name</b>${esc(t.name)}</div><div><b>Guest of Finn</b>${t.relation === "family" ? "Family" : "Friend"}</div></div>
+      <div class="row"><div><b>Coming to</b>${comingTo(t)}</div></div>
       <div class="row"><div><b>Ticket code</b><span class="code">${esc(t.code)}</span></div></div>
       ${!withGiveBack ? "" : giveBackAsk === t.id
         ? `<div class="giveback">Give your seat back so someone else can come? <button class="btn" type="button" data-giveback-yes="${esc(t.id)}" style="padding:6px 10px">Yes, give it back</button><button class="linkish" type="button" data-giveback-no>Keep my ticket</button></div>`
@@ -766,7 +786,7 @@ $("#claimForm").addEventListener("submit", async e => {
   err.hidden = true;
   const btn = $("#claimBtn"); btn.disabled = true; btn.textContent = "Claiming…";
   try {
-    const t = await Store.claim(current.show.id, current.picked, name, rel.value);
+    const t = await Store.claim(current.show.id, current.picked, name, rel.value, { missMorning: $("#missMorning").checked, missNight: $("#missNight").checked });
     mine.push(t); saveMine(); renderMine();
     $("#doneTicket").innerHTML = stubHTML(t);
     $("#claimStep").hidden = true; $("#doneStep").hidden = false;
@@ -792,7 +812,7 @@ function startAdmin(){
   $("#adminBody").hidden = false;
   if (adminUnwatch) return;
   adminUnwatch = Store.watchTickets(rows => { adminRows = rows; renderAdmin(); },
-    () => { $("#rows").innerHTML = `<tr><td colspan="7" class="empty">The ticket list didn't load. Check your connection and reload the page.</td></tr>`; });
+    () => { $("#rows").innerHTML = `<tr><td colspan="8" class="empty">The ticket list didn't load. Check your connection and reload the page.</td></tr>`; });
 }
 const shortName = n => { const parts = String(n || "").trim().split(/\s+/); const s = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0] || ""; return s.length > 12 ? s.slice(0, 11) + "…" : s; };
 function renderAdminMap(rows){
@@ -833,7 +853,9 @@ function renderAdmin(){
     [`${all.length}/${SEATS.length}`, "Seats claimed"],
     [`${SEATS.length - all.length}`, "Seats open"],
     [friends, "Friends"],
-    [family, "Family"]
+    [family, "Family"],
+    [all.filter(t => !t.missMorning).length, "Coming to the morning show"],
+    [all.filter(t => !t.missNight).length, "Coming to the night show"]
   ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
   renderAdminMap(all);
   const mv = all.find(t => t.id === adminMove), bar = $("#moveBar");
@@ -845,9 +867,9 @@ function renderAdmin(){
       ? `<span>Move <b>${esc(mv.name)}</b> from ${esc(seatLabel(from))} to <b>${esc(seatLabel(to))}</b>?</span><button class="btn" type="button" data-move-go>Move</button><button class="linkish" type="button" data-move-cancel>Cancel</button>`
       : `<span>Moving <b>${esc(mv.name)}</b> (${esc(seatLabel(from))}). Tap an open seat on the map.</span><button class="linkish" type="button" data-move-cancel>Cancel</button>`;
   }
-  const rows = all.filter(t => !q || [t.name, t.seat, t.area, t.code, t.relation].join(" ").toLowerCase().includes(q));
+  const rows = all.filter(t => !q || [t.name, t.seat, t.area, t.code, t.relation, comingTo(t)].join(" ").toLowerCase().includes(q));
   if (!rows.length){
-    $("#rows").innerHTML = `<tr><td colspan="7" class="empty">${all.length ? "No tickets match that search." : "No one has claimed a ticket yet."}</td></tr>`;
+    $("#rows").innerHTML = `<tr><td colspan="8" class="empty">${all.length ? "No tickets match that search." : "No one has claimed a ticket yet."}</td></tr>`;
     return;
   }
   $("#rows").innerHTML = rows.map(t => {
@@ -857,6 +879,7 @@ function renderAdmin(){
       <td>${esc(t.area || (s ? s.area.name : ""))}</td>
       <td>${esc(t.name)}</td>
       <td><span class="rel ${t.relation === "family" ? "family" : ""}">${t.relation === "family" ? "Family" : "Friend"}</span></td>
+      <td><span class="att ${t.missMorning || t.missNight ? "part" : ""}">${comingTo(t)}</span></td>
       <td class="num">${new Date(t.createdAt).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" })}</td>
       <td class="num">${esc(t.code || "")}</td>
       <td>${!fb || adminKey ? (adminConfirm === t.id
@@ -867,8 +890,8 @@ function renderAdmin(){
 }
 $("#aSearch").addEventListener("input", renderAdmin);
 $("#copyCsv").addEventListener("click", async () => {
-  const head = ["Seat","Area","Name","Friend or family","Claimed","Ticket code"];
-  const lines = [head, ...adminRows.map(t => [t.seat, t.area, t.name, t.relation, new Date(t.createdAt).toLocaleString(), t.code])]
+  const head = ["Seat","Area","Name","Friend or family","Shows","Claimed","Ticket code"];
+  const lines = [head, ...adminRows.map(t => [t.seat, t.area, t.name, t.relation, comingTo(t), new Date(t.createdAt).toLocaleString(), t.code])]
     .map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   try { await navigator.clipboard.writeText(lines); toast("Copied. Paste it into a spreadsheet."); }
   catch(e){ toast("Couldn't copy here. Try a different browser."); }
