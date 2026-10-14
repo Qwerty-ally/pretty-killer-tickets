@@ -25,16 +25,16 @@ service cloud.firestore {
       return "cancelKey" in resource.data && keyMatches(resource.data.cancelKey, resource.data.keyHash);
     }
 
-    // Admin actions (move people, release seats) use the private admin link's
-    // secret. Only its SHA-256 is stored here. The admin page writes the secret
-    // into adminTokens/{id} (which nobody can read) in the same request as the
-    // delete, and the delete checks that token.
+    // Admin seat changes (move, switch, release, roll the dice, undo) use the
+    // private admin link's secret. Only its SHA-256 is stored here. The admin
+    // page writes the secret into adminTokens/now (which nobody can read) in
+    // the same request as the seat changes, and each change checks that token.
     function isAdminKey(key) {
       return keyMatches(key, "c5659178d559cb6a6d9c16dee29e0ae3adc17de94c52925ead21f199415ed7ba");
     }
-    function adminActing(id) {
-      return getAfter(/databases/$(database)/documents/adminTokens/$(id)).data.at == request.time
-          && isAdminKey(getAfter(/databases/$(database)/documents/adminTokens/$(id)).data.key);
+    function adminActing() {
+      return getAfter(/databases/$(database)/documents/adminTokens/now).data.at == request.time
+          && isAdminKey(getAfter(/databases/$(database)/documents/adminTokens/now).data.key);
     }
     match /adminTokens/{id} {
       allow read: if false;
@@ -52,17 +52,19 @@ service cloud.firestore {
     // counts as an update, which is refused, so each seat goes to one person.
     match /seats/{id} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasOnly(["show", "seat", "takenAt", "keyHash"])
+      allow create: if adminActing()
+                    || (request.resource.data.keys().hasOnly(["show", "seat", "takenAt", "keyHash"])
                     && id == request.resource.data.show + "__" + request.resource.data.seat
-                    && existsAfter(/databases/$(database)/documents/tickets/$(id));
-      allow update: if onlyAddsCancelKey();
-      allow delete: if isAdmin() || cancelUnlocked() || adminActing(id);
+                    && existsAfter(/databases/$(database)/documents/tickets/$(id)));
+      allow update: if adminActing() || onlyAddsCancelKey();
+      allow delete: if adminActing() || isAdmin() || cancelUnlocked();
     }
 
     // tickets/{show}__{seat}: the ticket with the person's name.
     // Anyone can claim (create) one and read the list (the admin page has no login).
     match /tickets/{id} {
-      allow create: if request.resource.data.keys().hasOnly(["show", "seat", "area", "name", "relation", "code", "createdAt", "keyHash", "missMorning", "missNight"])
+      allow create: if adminActing()
+                    || (request.resource.data.keys().hasOnly(["show", "seat", "area", "name", "relation", "code", "createdAt", "keyHash", "missMorning", "missNight"])
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
                     && request.resource.data.name.size() <= 60
@@ -70,10 +72,10 @@ service cloud.firestore {
                     && (!("missMorning" in request.resource.data) || request.resource.data.missMorning is bool)
                     && (!("missNight" in request.resource.data) || request.resource.data.missNight is bool)
                     && id == request.resource.data.show + "__" + request.resource.data.seat
-                    && existsAfter(/databases/$(database)/documents/seats/$(id));
+                    && existsAfter(/databases/$(database)/documents/seats/$(id)));
       allow read: if true;
-      allow update: if onlyAddsCancelKey();
-      allow delete: if isAdmin() || cancelUnlocked() || adminActing(id);
+      allow update: if adminActing() || onlyAddsCancelKey();
+      allow delete: if adminActing() || isAdmin() || cancelUnlocked();
     }
   }
 }

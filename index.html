@@ -357,6 +357,8 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
       </div>
       <div class="tools">
         <div class="field"><label class="label" for="aSearch">Search names or seats</label><input id="aSearch" type="search" autocomplete="off"></div>
+        <button class="btn ghost" type="button" id="undoBtn" disabled>Undo</button>
+        <button class="btn ghost" type="button" id="diceBtn">⚄ Roll the dice</button>
         <button class="btn ghost" type="button" id="copyCsv">Copy as spreadsheet</button>
       </div>
       <div class="table-wrap">
@@ -544,43 +546,34 @@ const Store = {
       snap => cb(snap.docs.map(d => { const t = d.data(); return { id:d.id, ...t, createdAt: t.createdAt && t.createdAt.toMillis ? t.createdAt.toMillis() : Date.now() }; })),
       e => onErr && onErr(e));
   },
-  // Admin actions. The admin key goes into adminTokens/{id}, which nobody can
-  // read; the rules only allow the delete/move when that token was written in
-  // the same request with the right key.
-  adminToken(batch, id){
-    batch.set(fb.db.collection("adminTokens").doc(id), { key: adminKey, at: firebase.firestore.FieldValue.serverTimestamp() });
-  },
-  async release(id){
-    if (!fb){ const all = Demo.read(); delete all[id]; Demo.write(all); return; }
-    const batch = fb.db.batch();
-    this.adminToken(batch, id);
-    batch.delete(fb.db.collection("tickets").doc(id));
-    batch.delete(fb.db.collection("seats").doc(id));
-    await batch.commit();
-  },
-  async move(t, newSeat){
-    const s = seatById(newSeat), newId = ticketId(t.show, newSeat);
+  // Admin seat changes (move, switch, release, roll the dice, undo) all go
+  // through layout(): it sets the listed seats to the listed people (or empty)
+  // in ONE batch, so it all happens at once or not at all. The admin key goes
+  // into adminTokens/now, which nobody can read; the rules only allow these
+  // writes when that token was written in the same request with the right key.
+  async layout(target, show = "prettykiller"){
+    const seats = Object.keys(target);
     if (!fb){
       const all = Demo.read();
-      if (all[newId]) throw { code:"taken" };
-      const old = all[t.id]; delete all[t.id];
-      all[newId] = { ...old, seat:newSeat, area:s.area.name };
+      seats.forEach(seat => delete all[ticketId(show, seat)]);
+      seats.forEach(seat => { const t = target[seat]; if (t) all[ticketId(show, seat)] = { ...pickTicket(t), show, seat, area: seatById(seat).area.name }; });
       Demo.write(all); return;
     }
-    const seatDoc = { show:t.show, seat:newSeat, takenAt: firebase.firestore.FieldValue.serverTimestamp() };
-    const ticketDoc = { show:t.show, seat:newSeat, area:s.area.name, name:t.name, relation:t.relation, code:t.code,
-      createdAt: t.createdAt ? firebase.firestore.Timestamp.fromMillis(t.createdAt) : firebase.firestore.FieldValue.serverTimestamp() };
-    if (t.keyHash){ seatDoc.keyHash = t.keyHash; ticketDoc.keyHash = t.keyHash; }
-    if (typeof t.missMorning === "boolean") ticketDoc.missMorning = t.missMorning;
-    if (typeof t.missNight === "boolean") ticketDoc.missNight = t.missNight;
+    const FV = firebase.firestore.FieldValue, cur = new Set(adminRows.filter(t => t.show === show).map(t => t.seat));
     const batch = fb.db.batch();
-    this.adminToken(batch, t.id);
-    batch.delete(fb.db.collection("tickets").doc(t.id));
-    batch.delete(fb.db.collection("seats").doc(t.id));
-    batch.set(fb.db.collection("seats").doc(newId), seatDoc);
-    batch.set(fb.db.collection("tickets").doc(newId), ticketDoc);
-    try { await batch.commit(); }
-    catch(e){ throw { code: e && e.code === "permission-denied" ? "taken" : "error" }; }
+    batch.set(fb.db.collection("adminTokens").doc("now"), { key: adminKey, at: FV.serverTimestamp() });
+    seats.forEach(seat => {
+      const id = ticketId(show, seat), t = target[seat];
+      const seatRef = fb.db.collection("seats").doc(id), ticketRef = fb.db.collection("tickets").doc(id);
+      if (!t){ if (cur.has(seat)){ batch.delete(ticketRef); batch.delete(seatRef); } return; }
+      const d = pickTicket(t);
+      const seatDoc = { show, seat, takenAt: FV.serverTimestamp() };
+      if (d.keyHash) seatDoc.keyHash = d.keyHash;
+      const ticketDoc = { ...d, show, seat, area: seatById(seat).area.name,
+        createdAt: d.createdAt ? firebase.firestore.Timestamp.fromMillis(d.createdAt) : FV.serverTimestamp() };
+      batch.set(seatRef, seatDoc); batch.set(ticketRef, ticketDoc);
+    });
+    await batch.commit();
   },
   // used to keep "My tickets" right after the admin moves or releases a seat
   async findByCode(code){
@@ -589,6 +582,14 @@ const Store = {
     return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
   }
 };
+// the parts of a ticket that travel with the person when their seat changes
+function pickTicket(t){
+  const d = { name:t.name, relation:t.relation, code:t.code, createdAt:t.createdAt || null };
+  if (t.keyHash) d.keyHash = t.keyHash;
+  if (typeof t.missMorning === "boolean") d.missMorning = t.missMorning;
+  if (typeof t.missNight === "boolean") d.missNight = t.missNight;
+  return d;
+}
 function makeKey(){ return Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join(""); }
 async function sha256(text){
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -802,6 +803,47 @@ $("#claimForm").addEventListener("submit", async e => {
 /* ---------- admin ---------- */
 let adminRows = [], adminUnwatch = null, adminConfirm = null, adminKey = null;
 let adminMove = null, adminMoveTo = null;   // ticket id being moved, and the seat picked for it
+let adminBusy = false;
+const undoStack = [];   // { label, before:{seat:ticket|null}, after:{seat:code|null} } for this visit
+
+const seatHolders = () => { const m = {}; adminRows.filter(t => t.show === "prettykiller").forEach(t => m[t.seat] = t); return m; };
+// Apply a seat change and remember how to undo it.
+async function adminChange(label, target){
+  if (adminBusy) return false;
+  const holders = seatHolders(), before = {}, after = {};
+  Object.keys(target).forEach(seat => { before[seat] = holders[seat] ? pickTicket(holders[seat]) : null; after[seat] = target[seat] ? target[seat].code : null; });
+  adminBusy = true; renderUndo();
+  try { await Store.layout(target); undoStack.push({ label, before, after }); return true; }
+  catch(e){ toast("That didn't go through. Try again."); return false; }
+  finally { adminBusy = false; renderUndo(); }
+}
+async function adminUndo(){
+  const last = undoStack[undoStack.length - 1];
+  if (!last || adminBusy) return;
+  const holders = seatHolders();
+  const unchanged = Object.keys(last.after).every(seat => (holders[seat] ? holders[seat].code : null) === last.after[seat]);
+  if (!unchanged){ undoStack.length = 0; renderUndo(); return toast("Can't undo: someone claimed or gave back a seat since then."); }
+  adminBusy = true; renderUndo();
+  try { await Store.layout(last.before); undoStack.pop(); toast(`Undid: ${last.label}`); }
+  catch(e){ toast("Undo didn't go through. Try again."); }
+  finally { adminBusy = false; renderUndo(); }
+}
+function renderUndo(){
+  const b = $("#undoBtn"), last = undoStack[undoStack.length - 1];
+  b.disabled = !last || adminBusy;
+  b.textContent = last ? `Undo: ${last.label}` : "Undo";
+  $("#diceBtn").disabled = adminBusy || adminRows.filter(t => t.show === "prettykiller").length < 1;
+}
+// Roll the dice: everyone gets a random seat (open seats included).
+async function rollDice(){
+  const people = adminRows.filter(t => t.show === "prettykiller");
+  if (!people.length) return toast("No one has a ticket yet.");
+  const seats = SEATS.map(x => x.id);
+  for (let i = seats.length - 1; i > 0; i--){ const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1); [seats[i], seats[j]] = [seats[j], seats[i]]; }
+  const target = {}; SEATS.forEach(x => target[x.id] = null);
+  people.forEach((t, i) => target[seats[i]] = t);
+  if (await adminChange("Roll the dice", target)) toast("Shuffled! Everyone has a random seat. Press Undo to put them back.");
+}
 async function openAdmin(){
   const banner = $("#adminBanner");
   banner.hidden = !!fb;
@@ -825,7 +867,7 @@ function renderAdminMap(rows){
   }).join("");
   const seats = SEATS.map(s => {
     const t = bySeat[s.id], r = s.area.w < 200 ? 30 : 36, side = s.area.id === "L" || s.area.id === "R";
-    const pickable = moving && !t, picked = !!moving && adminMoveTo === s.id, isMoving = moving && t && t.id === moving.id;
+    const isMoving = !!moving && !!t && t.id === moving.id, pickable = !!moving && !isMoving, picked = !!moving && adminMoveTo === s.id;
     const fill = picked ? "var(--accent)" : !t ? "none" : t.relation === "family" ? "var(--accent)" : "var(--ink)";
     const ink = !t ? "var(--muted)" : t.relation === "family" ? "var(--accent-ink)" : "var(--ground)";
     const nx = side ? (s.area.id === "L" ? s.x + r + 12 : s.x - r - 12) : s.x;
@@ -835,7 +877,7 @@ function renderAdminMap(rows){
       <title>${esc(seatLabel(s))}${t ? ` · ${esc(t.name)} (${t.relation === "family" ? "Family" : "Friend"})` : " · open"}</title>
       <circle cx="${s.x}" cy="${s.y}" r="${r}" fill="${fill}" stroke="${isMoving || picked ? "var(--accent)" : pickable ? "var(--accent)" : t ? "none" : "var(--muted)"}" stroke-width="${isMoving || picked ? 10 : pickable ? 5 : 3}" stroke-dasharray="${t || pickable || picked ? "" : "8 6"}" opacity="${isMoving ? .55 : 1}"/>
       <text x="${s.x}" y="${s.y + 9}" text-anchor="middle" style="font:800 24px var(--body)" fill="${ink}">${esc(s.id)}</text>
-      <text x="${nx}" y="${ny}" text-anchor="${anchor}" style="font:${t || picked ? 800 : 400} 21px var(--body)" fill="${t || picked ? "var(--ink)" : pickable ? "var(--accent)" : "var(--muted)"}">${picked ? esc(shortName(moving.name)) + "?" : t ? esc(shortName(t.name)) : pickable ? "move here" : "open"}</text>
+      <text x="${nx}" y="${ny}" text-anchor="${anchor}" style="font:${t || picked ? 800 : 400} 21px var(--body)" fill="${t || picked ? "var(--ink)" : pickable ? "var(--accent)" : "var(--muted)"}">${picked && !t ? esc(shortName(moving.name)) + "?" : t ? esc(shortName(t.name)) + (picked ? " ⇄" : "") : pickable ? "move here" : "open"}</text>
     </g>`;
   }).join("");
   $("#adminMap").innerHTML = `<svg viewBox="${L.view}" role="group" aria-label="Seat map with who is sitting where">
@@ -858,14 +900,18 @@ function renderAdmin(){
     [all.filter(t => !t.missNight).length, "Coming to the night show"]
   ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
   renderAdminMap(all);
+  renderUndo();
   const mv = all.find(t => t.id === adminMove), bar = $("#moveBar");
   if (adminMove && !mv){ adminMove = null; adminMoveTo = null; }
   bar.hidden = !mv;
   if (mv){
     const from = seatById(mv.seat), to = adminMoveTo && seatById(adminMoveTo);
-    bar.innerHTML = to
+    const other = to && all.find(t => t.show === "prettykiller" && t.seat === adminMoveTo);
+    bar.innerHTML = other
+      ? `<span>Switch <b>${esc(mv.name)}</b> (${esc(seatLabel(from))}) and <b>${esc(other.name)}</b> (${esc(seatLabel(to))})?</span><button class="btn" type="button" data-move-go>Switch</button><button class="linkish" type="button" data-move-cancel>Cancel</button>`
+      : to
       ? `<span>Move <b>${esc(mv.name)}</b> from ${esc(seatLabel(from))} to <b>${esc(seatLabel(to))}</b>?</span><button class="btn" type="button" data-move-go>Move</button><button class="linkish" type="button" data-move-cancel>Cancel</button>`
-      : `<span>Moving <b>${esc(mv.name)}</b> (${esc(seatLabel(from))}). Tap an open seat on the map.</span><button class="linkish" type="button" data-move-cancel>Cancel</button>`;
+      : `<span>Moving <b>${esc(mv.name)}</b> (${esc(seatLabel(from))}). Tap an open seat to move them, or someone else's seat to switch.</span><button class="linkish" type="button" data-move-cancel>Cancel</button>`;
   }
   const rows = all.filter(t => !q || [t.name, t.seat, t.area, t.code, t.relation, comingTo(t)].join(" ").toLowerCase().includes(q));
   if (!rows.length){
@@ -889,6 +935,8 @@ function renderAdmin(){
   }).join("");
 }
 $("#aSearch").addEventListener("input", renderAdmin);
+$("#undoBtn").addEventListener("click", adminUndo);
+$("#diceBtn").addEventListener("click", rollDice);
 $("#copyCsv").addEventListener("click", async () => {
   const head = ["Seat","Area","Name","Friend or family","Shows","Claimed","Ticket code"];
   const lines = [head, ...adminRows.map(t => [t.seat, t.area, t.name, t.relation, comingTo(t), new Date(t.createdAt).toLocaleString(), t.code])]
@@ -983,8 +1031,8 @@ document.addEventListener("click", async e => {
   }
   const aseat = e.target.closest("[data-aseat]");
   if (aseat && adminMove){
-    const id = aseat.dataset.aseat, taken = adminRows.some(t => t.show === "prettykiller" && t.seat === id);
-    if (taken) return toast("That seat is taken. Pick an open one.");
+    const id = aseat.dataset.aseat, mover = adminRows.find(t => t.id === adminMove);
+    if (mover && mover.seat === id) return toast("That's their seat now. Pick a different one.");
     adminMoveTo = id; return renderAdmin();
   }
   if (aseat){ const box = $("#aSearch"); box.value = box.value === aseat.dataset.aseat ? "" : aseat.dataset.aseat; renderAdmin(); return; }
@@ -995,9 +1043,13 @@ document.addEventListener("click", async e => {
   if (go){
     const t = adminRows.find(r => r.id === adminMove), to = adminMoveTo;
     if (!t || !to) return;
-    go.disabled = true; go.textContent = "Moving…";
-    try { await Store.move(t, to); adminMove = null; adminMoveTo = null; toast(`Moved ${t.name} to ${seatLabel(seatById(to))}`); renderAdmin(); }
-    catch(x){ go.disabled = false; go.textContent = "Move"; toast(x && x.code === "taken" ? "That seat just got taken. Pick another one." : "The move didn't go through. Try again."); }
+    const other = adminRows.find(r => r.show === "prettykiller" && r.seat === to);
+    go.disabled = true; go.textContent = other ? "Switching…" : "Moving…";
+    const ok = other
+      ? await adminChange(`Switch ${shortName(t.name)} and ${shortName(other.name)}`, { [t.seat]: other, [to]: t })
+      : await adminChange(`Move ${shortName(t.name)} to ${to}`, { [t.seat]: null, [to]: t });
+    if (ok){ adminMove = null; adminMoveTo = null; toast(other ? `Switched ${t.name} and ${other.name}` : `Moved ${t.name} to ${seatLabel(seatById(to))}`); renderAdmin(); }
+    else { go.disabled = false; go.textContent = other ? "Switch" : "Move"; }
     return;
   }
   if (e.target.closest("[data-memories]")){ soundOn = true; song.play().then(() => { if (current.view !== "vintage") song.pause(); }).catch(() => {}); }
@@ -1025,8 +1077,8 @@ document.addEventListener("click", async e => {
   if (e.target.closest("[data-cancel]")){ adminConfirm = null; return renderAdmin(); }
   const rel = e.target.closest("[data-release]");
   if (rel){
-    try { await Store.release(rel.dataset.release); adminConfirm = null; toast("Seat released"); }
-    catch(x){ toast("Couldn't release that seat. Try again."); }
+    const t = adminRows.find(r => r.id === rel.dataset.release);
+    if (t && await adminChange(`Release ${t.seat}`, { [t.seat]: null })){ adminConfirm = null; toast("Seat released. Press Undo to bring them back."); renderAdmin(); }
   }
 });
 $("#getTicket").addEventListener("click", () => current.picked && openModal());
