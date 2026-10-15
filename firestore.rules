@@ -94,11 +94,21 @@ service cloud.firestore {
                    && request.resource.data.keys().hasOnly(["side", "index", "pos", "startedAt", "on", "playing", "dur"]);
     }
 
-    // guestbook/{id}: anyone can leave a message; it only shows on the site
+    // showtimes/{show}: when the Pretty show started (set by the admin page).
+    match /showtimes/{show} {
+      allow read: if true;
+      allow create, update: if adminActing() && request.resource.data.keys().hasOnly(["prettyStart"]);
+      allow delete: if adminActing();
+    }
+
+    // guestbook/{id}: anyone can leave a message, starting 50 minutes after the
+    // Pretty show starts; it only shows on the site
     // after the admin approves it. Only the admin can approve, hide or delete.
     match /guestbook/{id} {
       allow read: if true;
       allow create: if request.resource.data.keys().hasOnly(["name", "message", "approved", "createdAt"])
+                    && exists(/databases/$(database)/documents/showtimes/prettykiller)
+                    && request.time >= get(/databases/$(database)/documents/showtimes/prettykiller).data.prettyStart + duration.value(50, "m")
                     && request.resource.data.approved == false
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
