@@ -349,7 +349,18 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
         <p class="mode-note" id="modeNote"></p>
       </aside>
     </div>
-    <h2 class="sec" id="tracklist" style="margin-top:0">Tracklist</h2>
+  </section>
+
+  <!-- TRACKLIST (Pretty Killer) -->
+  <section id="view-tracks" hidden>
+    <a class="back" href="#">← All shows</a>
+    <div class="ev-head">
+      <div>
+        <div class="label">Pretty Killer Tour · No set date · 15 Freeman Parkway</div>
+        <h1 id="tracklistHead">Tracklist</h1>
+        <p>The songs for the Pretty side (morning show) and the Killer side (night show).</p>
+      </div>
+    </div>
     <div class="tracks" id="tracksPublic"></div>
   </section>
 
@@ -728,7 +739,7 @@ function renderEvents(){
         <div class="meta">${s.when} · ${VENUE_ADDRESS}</div>
         <div class="tags">${s.ended ? `<span class="tag">This show has ended</span>` : `<span class="tag hot">Free</span><span class="tag">Same ticket for Pretty + Killer</span><span class="tag" id="left-${s.id}">${SEATS.length} seats</span>`}</div>
       </div>
-      <div class="go">${s.memories ? `<a class="btn" href="#vintage" data-memories>See memories</a>` : s.ended ? `<span class="btn" aria-disabled="true">Ended</span>` : `<a class="btn" href="#show-${s.id}">Find tickets</a>`}</div>
+      <div class="go">${s.memories ? `<a class="btn" href="#vintage" data-memories>See memories</a>` : s.ended ? `<span class="btn" aria-disabled="true">Ended</span>` : `<span id="go-${s.id}"><a class="btn" href="#show-${s.id}">Find tickets</a></span>`}</div>
     </article>`).join("");
 }
 
@@ -760,7 +771,6 @@ function stubHTML(t, withGiveBack){
 }
 
 function openEvent(id){
-  watchTracksOnce(); renderTracksPublic();
   const show = showById(id);
   if (!show || show.ended){ location.hash = ""; return; }
   current.show = show; current.picked = null;
@@ -1021,7 +1031,7 @@ function renderTracksPublic(){
       <h3>${sd.title}</h3><span class="label">${sd.sub}</span>
       <ol>${tracks[sd.key].map((name, i) => `<li><span>${String(i + 1).padStart(2, "0")}</span>${name.trim() ? esc(name.trim()) : `<em class="tba">To be announced</em>`}</li>`).join("")}</ol>
     </section>`).join("");
-  $("#tracklist").textContent = anySong ? "Tracklist" : "Tracklist · songs coming soon";
+  $("#tracklistHead").textContent = anySong ? "Tracklist" : "Tracklist · songs coming soon";
 }
 function renderTracksAdmin(){
   $("#tracksAdmin").innerHTML = SIDES_TL.map(sd => `
@@ -1254,7 +1264,7 @@ async function route(){
   if (isAdmin) adminKey = adminTry;
   const isShow = h.startsWith("show-");
   const wasVintage = current.view === "vintage";
-  current.view = isAdmin ? "admin" : isShow ? "event" : h === "vintage" ? "vintage" : "home";
+  current.view = isAdmin ? "admin" : isShow ? "event" : h === "vintage" ? "vintage" : h === "tracklist" ? "tracks" : "home";
   if (wasVintage && current.view !== "vintage") closeMemories();
   $("#view-home").hidden = current.view !== "home";
   $("#home-body").hidden = current.view !== "home";
@@ -1262,6 +1272,8 @@ async function route(){
   $("#view-event").hidden = current.view !== "event";
   $("#view-admin").hidden = current.view !== "admin";
   $("#view-vintage").hidden = current.view !== "vintage";
+  $("#view-tracks").hidden = current.view !== "tracks";
+  if (current.view === "tracks"){ watchTracksOnce(); renderTracksPublic(); }
   if (current.view === "vintage") openMemories();
   if (current.view !== "event" && current.unwatch){ current.unwatch(); current.unwatch = null; }
   if (isShow) openEvent(h.slice(5));
@@ -1297,7 +1309,10 @@ async function syncMine(){
   // live "seats open" count on the show list
   SHOWS.filter(s => !s.ended).forEach(show => Store.watchTaken(show.id, taken => {
     const el = $("#left-" + show.id);
-    if (el) el.textContent = taken.size >= SEATS.length ? "Sold out" : `${SEATS.length - taken.size} of ${SEATS.length} seats open`;
+    const full = taken.size >= SEATS.length;
+    if (el) el.textContent = full ? "Sold out" : `${SEATS.length - taken.size} of ${SEATS.length} seats open`;
+    const go = $("#go-" + show.id);
+    if (go) go.innerHTML = full ? `<a class="btn" href="#tracklist">Tickets sold out · See tracklist</a>` : `<a class="btn" href="#show-${show.id}">Find tickets</a>`;
   }));
   route();
   syncMine();
