@@ -159,6 +159,7 @@ h2.sec{font:900 34px/1 var(--display);margin:44px 0 16px}
 .move-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 14px;margin-bottom:12px;border:1.5px dashed var(--accent);border-radius:var(--radius);background:var(--ground-2);font-size:14px}
 .move-bar .btn{padding:7px 12px}
 .row-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.test-row td{background:var(--ground-2)}
 .legend .l-family{background:var(--accent)}
 .legend .l-friend{background:var(--ink)}
 .legend .l-empty{border:2px dashed var(--muted)}
@@ -642,6 +643,14 @@ const Store = {
     batch.set(fb.db.collection("tracklist").doc("prettykiller"), { pretty: t.pretty, killer: t.killer, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     await batch.commit();
   },
+  // permanently delete a test ticket (no seat, no undo)
+  async removeTest(id){
+    if (!fb){ const all = Demo.read(); delete all[id]; Demo.write(all); return; }
+    const batch = fb.db.batch();
+    batch.set(fb.db.collection("adminTokens").doc("now"), { key: adminKey, at: firebase.firestore.FieldValue.serverTimestamp() });
+    batch.delete(fb.db.collection("tickets").doc(id));
+    await batch.commit();
+  },
   async findByCode(code){
     if (!fb){ const hit = Object.entries(Demo.read()).find(([, t]) => t.code === code); return hit ? { id: hit[0], ...hit[1] } : null; }
     const snap = await fb.db.collection("tickets").where("code", "==", code).limit(1).get();
@@ -868,6 +877,9 @@ $("#claimForm").addEventListener("submit", async e => {
 
 /* ---------- admin ---------- */
 let adminRows = [], adminUnwatch = null, adminConfirm = null, adminKey = null;
+// Test tickets (test:true, no seat) are kept apart so they never count as a seat,
+// a sale or a dice-roll person. Removing one is permanent: there's no recover button.
+let testRows = [], testConfirm = null;
 let adminMove = null, adminMoveTo = null;   // ticket id being moved, and the seat picked for it
 let adminBusy = false;
 const undoStack = [];   // { label, before:{seat:ticket|null}, after:{seat:code|null} } for this visit
@@ -920,7 +932,7 @@ function startAdmin(){
   $("#adminBody").hidden = false;
   watchTracksOnce(); renderTracksAdmin();
   if (adminUnwatch) return;
-  adminUnwatch = Store.watchTickets(rows => { adminRows = rows; renderAdmin(); },
+  adminUnwatch = Store.watchTickets(rows => { adminRows = rows.filter(t => !t.test); testRows = rows.filter(t => t.test); renderAdmin(); },
     () => { $("#rows").innerHTML = `<tr><td colspan="8" class="empty">The ticket list didn't load. Check your connection and reload the page.</td></tr>`; });
 }
 const shortName = n => { const parts = String(n || "").trim().split(/\s+/); const s = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0] || ""; return s.length > 12 ? s.slice(0, 11) + "…" : s; };
@@ -981,11 +993,23 @@ function renderAdmin(){
       : `<span>Moving <b>${esc(mv.name)}</b> (${esc(seatLabel(from))}). Tap an open seat to move them, or someone else's seat to switch.</span><button class="linkish" type="button" data-move-cancel>Cancel</button>`;
   }
   const rows = all.filter(t => !q || [t.name, t.seat, t.area, t.code, t.relation, comingTo(t)].join(" ").toLowerCase().includes(q));
+  const testHTML = testRows.map(t => `<tr class="test-row">
+      <td class="num"><b>—</b></td>
+      <td>No seat</td>
+      <td>${esc(t.name)} <span class="rel">Test</span></td>
+      <td><span class="rel ${t.relation === "family" ? "family" : ""}">${t.relation === "family" ? "Family" : "Friend"}</span></td>
+      <td><span class="att ${t.missMorning || t.missNight ? "part" : ""}">${comingTo(t)}</span></td>
+      <td class="num">${new Date(t.createdAt).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" })}</td>
+      <td class="num">${esc(t.code || "")}</td>
+      <td>${testConfirm === t.id
+        ? `<span class="confirm">Remove it for good? There's no undo. <button class="btn" type="button" data-test-remove="${esc(t.id)}" style="padding:6px 10px">Yes, remove</button><button class="linkish" type="button" data-test-cancel>Cancel</button></span>`
+        : `<button class="linkish" type="button" data-test-ask="${esc(t.id)}">Remove test ticket</button>`}</td>
+    </tr>`).join("");
   if (!rows.length){
-    $("#rows").innerHTML = `<tr><td colspan="8" class="empty">${all.length ? "No tickets match that search." : "No one has claimed a ticket yet."}</td></tr>`;
+    $("#rows").innerHTML = testHTML + `<tr><td colspan="8" class="empty">${all.length ? "No tickets match that search." : "No one has claimed a ticket yet."}</td></tr>`;
     return;
   }
-  $("#rows").innerHTML = rows.map(t => {
+  $("#rows").innerHTML = testHTML + rows.map(t => {
     const s = seatById(t.seat);
     return `<tr>
       <td class="num"><b>${esc(t.seat)}</b></td>
@@ -1202,6 +1226,16 @@ document.addEventListener("click", async e => {
     return;
   }
   if (e.target.closest("[data-memories]")){ soundOn = true; song.play().then(() => { if (current.view !== "vintage") song.pause(); }).catch(() => {}); }
+  const ta = e.target.closest("[data-test-ask]");
+  if (ta){ testConfirm = ta.dataset.testAsk; return renderAdmin(); }
+  if (e.target.closest("[data-test-cancel]")){ testConfirm = null; return renderAdmin(); }
+  const tr = e.target.closest("[data-test-remove]");
+  if (tr){
+    tr.disabled = true; tr.textContent = "Removing…";
+    try { await Store.removeTest(tr.dataset.testRemove); testConfirm = null; toast("Test ticket removed. Ask Claude if you want it back."); }
+    catch(x){ tr.disabled = false; tr.textContent = "Yes, remove"; toast("Couldn't remove it. Try again."); }
+    return;
+  }
   const tm = e.target.closest("[data-tmove]");
   if (tm){
     const side = tm.dataset.tside, i = +tm.dataset.ti, j = i + (+tm.dataset.tmove);
