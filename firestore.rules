@@ -60,6 +60,16 @@ service cloud.firestore {
       allow delete: if adminActing() || isAdmin() || cancelUnlocked();
     }
 
+    // tracklist/{show}: song names for the Pretty and Killer sides. Anyone can
+    // read it; only the admin page (admin token in the same request) can save it.
+    match /tracklist/{show} {
+      allow read: if true;
+      allow write: if adminActing()
+                   && request.resource.data.keys().hasOnly(["pretty", "killer", "updatedAt"])
+                   && request.resource.data.pretty is list && request.resource.data.pretty.size() <= 30
+                   && request.resource.data.killer is list && request.resource.data.killer.size() <= 30;
+    }
+
     // tickets/{show}__{seat}: the ticket with the person's name.
     // Anyone can claim (create) one and read the list (the admin page has no login).
     match /tickets/{id} {

@@ -238,6 +238,38 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .vids figcaption{font:12px/1.2 var(--mono);color:var(--muted)}
 .giveback{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;margin-top:4px}
 
+/* tracklist */
+.tracks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;padding-bottom:56px}
+.tl{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.tl h3{margin:0 0 2px;font:900 24px/1.1 var(--display)}
+[data-side="killer"] .tl h3{font-weight:400;text-transform:uppercase;letter-spacing:.03em}
+.tl .label{margin-bottom:12px;display:block}
+.tl.pretty h3{color:#f25fc4}
+.tl.killer{background:#0b0a0c;color:#f2ecf0}
+.tl.killer h3{color:#ff3fae}
+.tl.killer .label,.tl.killer .tba{color:#8c8390}
+.tl ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column}
+.tl li{display:grid;grid-template-columns:28px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-weight:700}
+.tl.killer li{border-color:#2c272f}
+.tl li:last-child{border-bottom:0}
+.tl li span{font:600 12px/1.6 var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.tl.pretty li span{color:#f25fc4}
+.tl.killer li span{color:#ff3fae}
+.tl .tba{font-weight:400;font-style:italic;color:var(--muted)}
+.tl-admin{margin-bottom:56px}
+.tl-admin .tl{box-shadow:none;border:1.5px solid var(--line)}
+.tl-row{display:grid;grid-template-columns:24px 28px minmax(0,1fr) auto;gap:8px;align-items:center;padding:4px 0}
+.tl-row.over{outline:2px dashed var(--accent);outline-offset:2px}
+.tl-row .grip{cursor:grab;color:var(--muted);font-size:18px;line-height:1;text-align:center;user-select:none}
+.tl-row b{font:600 12px/1 var(--mono);color:var(--accent);text-align:right}
+.tl-row input{background:var(--ground-2);border:1.5px solid var(--line);border-radius:var(--radius);padding:8px 10px;min-width:0;width:100%}
+.tl.killer .tl-row input{background:#141216;border-color:#2c272f;color:#f2ecf0}
+.tl-row .arrows{display:flex;gap:4px}
+.tl-row .arrows button{width:30px;height:30px;border-radius:var(--radius);border:1.5px solid var(--line);background:none;cursor:pointer;color:inherit}
+.tl-row .arrows button:disabled{opacity:.3;cursor:default}
+.tl-save{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
+@media (max-width:760px){ .tracks{grid-template-columns:1fr} }
+
 footer{border-top:1px solid var(--line);padding-block:24px 40px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;background:var(--surface);color:var(--ink);font-family:var(--mono)}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--ground);padding:10px 18px;border-radius:var(--radius);font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
@@ -317,6 +349,8 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
         <p class="mode-note" id="modeNote"></p>
       </aside>
     </div>
+    <h2 class="sec" id="tracklist" style="margin-top:0">Tracklist</h2>
+    <div class="tracks" id="tracksPublic"></div>
   </section>
 
   <!-- VINTAGE TOUR MEMORIES -->
@@ -366,6 +400,15 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
           <thead><tr><th>Seat</th><th>Area</th><th>Name</th><th>Friend or family</th><th>Shows</th><th>Claimed</th><th>Ticket code</th><th></th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
+      </div>
+      <div class="tl-admin">
+        <h2 class="sec" style="margin-top:8px">Tracklist</h2>
+        <p class="mode-note" style="margin-bottom:12px">Type the song names. Drag a song onto another one (or use the arrows) to switch their places, even between the Pretty and Killer sides. Empty spots show as "To be announced".</p>
+        <div class="tracks" id="tracksAdmin" style="padding-bottom:0"></div>
+        <div class="tl-save">
+          <button class="btn" type="button" id="saveTracks">Save tracklist</button>
+          <span class="mode-note" id="tracksStatus">No changes.</span>
+        </div>
       </div>
     </div>
   </section>
@@ -576,6 +619,18 @@ const Store = {
     await batch.commit();
   },
   // used to keep "My tickets" right after the admin moves or releases a seat
+  // tracklist for Pretty Killer: { pretty:[15 names], killer:[15 names] }
+  watchTracklist(cb){
+    if (!fb){ try { cb(JSON.parse(localStorage.getItem("pk-tracklist"))); } catch(e){ cb(null); } return () => {}; }
+    return fb.db.collection("tracklist").doc("prettykiller").onSnapshot(d => cb(d.exists ? d.data() : null), () => cb(null));
+  },
+  async saveTracklist(t){
+    if (!fb){ try { localStorage.setItem("pk-tracklist", JSON.stringify(t)); } catch(e){} return; }
+    const batch = fb.db.batch();
+    batch.set(fb.db.collection("adminTokens").doc("now"), { key: adminKey, at: firebase.firestore.FieldValue.serverTimestamp() });
+    batch.set(fb.db.collection("tracklist").doc("prettykiller"), { pretty: t.pretty, killer: t.killer, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    await batch.commit();
+  },
   async findByCode(code){
     if (!fb){ const hit = Object.entries(Demo.read()).find(([, t]) => t.code === code); return hit ? { id: hit[0], ...hit[1] } : null; }
     const snap = await fb.db.collection("tickets").where("code", "==", code).limit(1).get();
@@ -705,6 +760,7 @@ function stubHTML(t, withGiveBack){
 }
 
 function openEvent(id){
+  watchTracksOnce(); renderTracksPublic();
   const show = showById(id);
   if (!show || show.ended){ location.hash = ""; return; }
   current.show = show; current.picked = null;
@@ -852,6 +908,7 @@ async function openAdmin(){
 }
 function startAdmin(){
   $("#adminBody").hidden = false;
+  watchTracksOnce(); renderTracksAdmin();
   if (adminUnwatch) return;
   adminUnwatch = Store.watchTickets(rows => { adminRows = rows; renderAdmin(); },
     () => { $("#rows").innerHTML = `<tr><td colspan="8" class="empty">The ticket list didn't load. Check your connection and reload the page.</td></tr>`; });
@@ -943,6 +1000,88 @@ $("#copyCsv").addEventListener("click", async () => {
     .map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   try { await navigator.clipboard.writeText(lines); toast("Copied. Paste it into a spreadsheet."); }
   catch(e){ toast("Couldn't copy here. Try a different browser."); }
+});
+
+/* ---------- Tracklist (Pretty Killer) ---------- */
+const TRACK_SLOTS = 15;
+const SIDES_TL = [
+  { key:"pretty", title:"Pretty side", sub:"Morning show · AM" },
+  { key:"killer", title:"Killer side", sub:"Night show · PM" }
+];
+const blankList = () => Array(TRACK_SLOTS).fill("");
+const fitList = l => { const a = Array.isArray(l) ? l.slice(0, TRACK_SLOTS).map(x => String(x ?? "")) : []; while (a.length < TRACK_SLOTS) a.push(""); return a; };
+let tracks = { pretty: blankList(), killer: blankList() };          // what's saved
+let draft = { pretty: blankList(), killer: blankList() };           // what the admin is editing
+let tracksDirty = false, dragFrom = null, tracksUnwatch = null;
+
+function renderTracksPublic(){
+  const anySong = SIDES_TL.some(sd => tracks[sd.key].some(x => x.trim()));
+  $("#tracksPublic").innerHTML = SIDES_TL.map(sd => `
+    <section class="tl ${sd.key}">
+      <h3>${sd.title}</h3><span class="label">${sd.sub}</span>
+      <ol>${tracks[sd.key].map((name, i) => `<li><span>${String(i + 1).padStart(2, "0")}</span>${name.trim() ? esc(name.trim()) : `<em class="tba">To be announced</em>`}</li>`).join("")}</ol>
+    </section>`).join("");
+  $("#tracklist").textContent = anySong ? "Tracklist" : "Tracklist · songs coming soon";
+}
+function renderTracksAdmin(){
+  $("#tracksAdmin").innerHTML = SIDES_TL.map(sd => `
+    <section class="tl ${sd.key}">
+      <h3>${sd.title}</h3><span class="label">${sd.sub}</span>
+      ${draft[sd.key].map((name, i) => `
+        <div class="tl-row" data-tside="${sd.key}" data-ti="${i}">
+          <span class="grip" draggable="true" title="Drag onto another song to switch" aria-hidden="true">⠿</span>
+          <b>${i + 1}</b>
+          <input type="text" id="tr-${sd.key}-${i}" maxlength="80" value="${esc(name)}" placeholder="Song ${i + 1}" aria-label="${sd.title} song ${i + 1}" data-tside="${sd.key}" data-ti="${i}">
+          <span class="arrows">
+            <button type="button" data-tmove="-1" data-tside="${sd.key}" data-ti="${i}" aria-label="Move ${sd.title} song ${i + 1} up" ${i === 0 ? "disabled" : ""}>↑</button>
+            <button type="button" data-tmove="1" data-tside="${sd.key}" data-ti="${i}" aria-label="Move ${sd.title} song ${i + 1} down" ${i === TRACK_SLOTS - 1 ? "disabled" : ""}>↓</button>
+          </span>
+        </div>`).join("")}
+    </section>`).join("");
+}
+function setTracksDirty(d){ tracksDirty = d; $("#tracksStatus").textContent = d ? "You have unsaved changes." : "No changes."; }
+function swapTracks(a, b){
+  const t = draft[a.side][a.i]; draft[a.side][a.i] = draft[b.side][b.i]; draft[b.side][b.i] = t;
+  setTracksDirty(true); renderTracksAdmin();
+}
+function watchTracksOnce(){
+  if (tracksUnwatch) return;
+  tracksUnwatch = Store.watchTracklist(data => {
+    tracks = { pretty: fitList(data && data.pretty), killer: fitList(data && data.killer) };
+    renderTracksPublic();
+    if (!tracksDirty){ draft = { pretty: tracks.pretty.slice(), killer: tracks.killer.slice() }; if (current.view === "admin") renderTracksAdmin(); }
+  });
+}
+// typing
+document.addEventListener("input", e => {
+  const inp = e.target.closest && e.target.closest("#tracksAdmin input[data-tside]");
+  if (!inp) return;
+  draft[inp.dataset.tside][+inp.dataset.ti] = inp.value; setTracksDirty(true);
+});
+// drag one song onto another to switch them
+document.addEventListener("dragstart", e => {
+  const row = e.target.closest && e.target.closest(".tl-row");
+  if (!row) return;
+  dragFrom = { side: row.dataset.tside, i: +row.dataset.ti };
+  e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", "song"); } catch(x){}
+});
+document.addEventListener("dragover", e => { const row = e.target.closest && e.target.closest(".tl-row"); if (row && dragFrom){ e.preventDefault(); row.classList.add("over"); } });
+document.addEventListener("dragleave", e => { const row = e.target.closest && e.target.closest(".tl-row"); if (row) row.classList.remove("over"); });
+document.addEventListener("drop", e => {
+  const row = e.target.closest && e.target.closest(".tl-row");
+  if (!row || !dragFrom) return;
+  e.preventDefault();
+  const to = { side: row.dataset.tside, i: +row.dataset.ti };
+  if (to.side !== dragFrom.side || to.i !== dragFrom.i) swapTracks(dragFrom, to);
+  dragFrom = null;
+});
+document.addEventListener("dragend", () => { dragFrom = null; document.querySelectorAll(".tl-row.over").forEach(r => r.classList.remove("over")); });
+$("#saveTracks").addEventListener("click", async () => {
+  const b = $("#saveTracks"); b.disabled = true; b.textContent = "Saving…";
+  const clean = { pretty: draft.pretty.map(x => x.trim()), killer: draft.killer.map(x => x.trim()) };
+  try { await Store.saveTracklist(clean); tracks = clean; draft = { pretty: clean.pretty.slice(), killer: clean.killer.slice() }; setTracksDirty(false); renderTracksPublic(); renderTracksAdmin(); toast("Tracklist saved"); }
+  catch(x){ toast("Couldn't save the tracklist. Try again."); }
+  b.disabled = false; b.textContent = "Save tracklist";
 });
 
 /* ---------- Vintage Tour memories ---------- */
@@ -1053,6 +1192,12 @@ document.addEventListener("click", async e => {
     return;
   }
   if (e.target.closest("[data-memories]")){ soundOn = true; song.play().then(() => { if (current.view !== "vintage") song.pause(); }).catch(() => {}); }
+  const tm = e.target.closest("[data-tmove]");
+  if (tm){
+    const side = tm.dataset.tside, i = +tm.dataset.ti, j = i + (+tm.dataset.tmove);
+    if (j >= 0 && j < TRACK_SLOTS){ swapTracks({ side, i }, { side, i: j }); const f = document.querySelector(`[data-tmove="${tm.dataset.tmove}"][data-tside="${side}"][data-ti="${j}"]`); if (f && !f.disabled) f.focus(); }
+    return;
+  }
   const vbtn = e.target.closest("[data-videos]");
   if (vbtn) return openVideos(vbtn.dataset.videos);
   if (e.target.closest("[data-vclose]") || (e.target === $("#scrim") && videosOpen)) return closeVideos();
