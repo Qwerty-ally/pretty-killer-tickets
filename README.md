@@ -14,7 +14,7 @@ Free ticket site for Finn Shapiro's shows at 15 Freeman Parkway, in the same Pre
 
 - **Seat opened alert:** when a sold-out show gets a free seat, the button switches back to **Find tickets**, the card says how few are left, and anyone with the site open gets a heads-up.
 - **Door QR code:** on the admin page (with a download). It opens `confirmed.html`, which is just the Ticket Confirmed picture on black.
-- **Now playing:** on the admin page, press **Start** once; it moves to the next song by itself using the song lengths in the tracklist (no length = 3:30). **Next** / **Back** fix drift, **Stop** ends it. Guests see a "Now playing" bar on every page.
+- **Now playing:** each side can have one full audio file (`media/pretty-killer/set-pretty.mp3` and `set-killer.mp3`). On the admin page, play/pause it; guests' "Now playing" bar follows the audio (and shows "Paused"). To cut the audio into songs, pick a song and press **Mark start** right when it begins, then **Save tracklist** (or type start times like 3:42 in the tracklist). Without an audio file, Play runs on a timer (songs without a start time count as 3:30). **Next** / **Back** jump between songs, **Stop** ends it.
 - **Song voting:** on the tracklist page guests pick up to 3 songs per side and send their votes once; the admin page shows the totals and can reset them.
 - **Guestbook:** guests leave a message at `#guestbook`; it shows up only after you approve it on the admin page (Approve / Hide / Delete). Messages waiting for approval aren't shown on the site, but can be read by anyone who queries the database directly.
 
