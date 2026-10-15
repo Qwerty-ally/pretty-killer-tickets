@@ -43,6 +43,23 @@ service cloud.firestore {
                    && isAdminKey(request.resource.data.key);
     }
 
+    // Changing which shows you're coming to (you keep your seat): the ticket
+    // holder's device writes its key into ownerTokens/{id} (which nobody can
+    // read) in the same request, and only missMorning / missNight can change.
+    match /ownerTokens/{id} {
+      allow read: if false;
+      allow write: if request.resource.data.keys().hasOnly(["key", "at"])
+                   && request.resource.data.at == request.time
+                   && keyMatches(request.resource.data.key, get(/databases/$(database)/documents/tickets/$(id)).data.keyHash);
+    }
+    function ownerChangesShows(id) {
+      return getAfter(/databases/$(database)/documents/ownerTokens/$(id)).data.at == request.time
+          && keyMatches(getAfter(/databases/$(database)/documents/ownerTokens/$(id)).data.key, resource.data.keyHash)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["missMorning", "missNight"])
+          && request.resource.data.missMorning is bool
+          && request.resource.data.missNight is bool;
+    }
+
     function isAdmin() {
       return request.auth != null && request.auth.token.email == "finnshapiro49@gmail.com";
     }
@@ -84,7 +101,7 @@ service cloud.firestore {
                     && id == request.resource.data.show + "__" + request.resource.data.seat
                     && existsAfter(/databases/$(database)/documents/seats/$(id)));
       allow read: if true;
-      allow update: if adminActing() || onlyAddsCancelKey();
+      allow update: if adminActing() || onlyAddsCancelKey() || ownerChangesShows(id);
       allow delete: if adminActing() || isAdmin() || cancelUnlocked();
     }
   }

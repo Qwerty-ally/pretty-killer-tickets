@@ -238,6 +238,12 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .vids.one{grid-template-columns:1fr}
 .vids figcaption{font:12px/1.2 var(--mono);color:var(--muted)}
 .giveback{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;margin-top:4px}
+.giveback.menu{flex-direction:column;align-items:stretch;border:1.5px dashed var(--line);border-radius:var(--radius);padding:10px}
+.check.sm{padding:7px 10px;font-size:13px}
+.menu-actions{display:flex;gap:10px;align-items:center}
+.giveback.menu > .linkish{align-self:flex-start}
+.att-select{font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:6px 8px;border-radius:var(--radius);border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.att-select.part{border-color:var(--accent);color:var(--accent)}
 
 /* tracklist */
 .tracks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;padding-bottom:56px}
@@ -643,6 +649,17 @@ const Store = {
     batch.set(fb.db.collection("tracklist").doc("prettykiller"), { pretty: t.pretty, killer: t.killer, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     await batch.commit();
   },
+  // Change which shows someone is coming to (they keep their seat).
+  // Owner: proves it with the key on their device, written to ownerTokens/{id}
+  // (which nobody can read). Admin: uses the admin token.
+  async setShows(t, missMorning, missNight, asAdmin){
+    if (!fb){ const all = Demo.read(); if (all[t.id]){ all[t.id].missMorning = missMorning; all[t.id].missNight = missNight; Demo.write(all); } return; }
+    const FV = firebase.firestore.FieldValue, batch = fb.db.batch();
+    if (asAdmin) batch.set(fb.db.collection("adminTokens").doc("now"), { key: adminKey, at: FV.serverTimestamp() });
+    else { if (!t.key) throw { code:"nokey" }; batch.set(fb.db.collection("ownerTokens").doc(t.id), { key: t.key, at: FV.serverTimestamp() }); }
+    batch.update(fb.db.collection("tickets").doc(t.id), { missMorning, missNight });
+    await batch.commit();
+  },
   // permanently delete a test ticket (no seat, no undo)
   async removeTest(id){
     if (!fb){ const all = Demo.read(); delete all[id]; Demo.write(all); return; }
@@ -757,11 +774,12 @@ function renderMine(){
   $("#mine").hidden = !mine.length;
   $("#stubs").innerHTML = mine.map(t => stubHTML(t, true)).join("");
 }
+const showsValue = t => !t.missMorning && !t.missNight ? "both" : !t.missMorning ? "morning" : !t.missNight ? "night" : "neither";
 // Which shows someone is coming to (one ticket covers both)
 const comingTo = t => !t.missMorning && !t.missNight ? "Morning + night show"
                     : !t.missMorning ? "Morning show only"
                     : !t.missNight ? "Night show only" : "Can't make either show";
-let giveBackAsk = null;
+let giveBackAsk = null, showMenu = null;
 function stubHTML(t, withGiveBack){
   const s = seatById(t.seat), show = showById(t.show);
   return `<div class="stub">
@@ -773,7 +791,15 @@ function stubHTML(t, withGiveBack){
       <div class="row"><div><b>Ticket code</b><span class="code">${esc(t.code)}</span></div></div>
       ${!withGiveBack ? "" : giveBackAsk === t.id
         ? `<div class="giveback">Give your seat back so someone else can come? <button class="btn" type="button" data-giveback-yes="${esc(t.id)}" style="padding:6px 10px">Yes, give it back</button><button class="linkish" type="button" data-giveback-no>Keep my ticket</button></div>`
-        : (t.key || !fb) ? `<div class="giveback"><button class="linkish" type="button" data-giveback="${esc(t.id)}">Can't make it?</button></div>` : ""}
+        : showMenu === t.id
+        ? `<div class="giveback menu">
+            <span>Which show can't you make? You keep your seat.</span>
+            <label class="check sm"><input type="checkbox" id="mm-${esc(t.id)}" ${t.missMorning ? "checked" : ""}><span>I can't go to the <b>morning show</b></span></label>
+            <label class="check sm"><input type="checkbox" id="mn-${esc(t.id)}" ${t.missNight ? "checked" : ""}><span>I can't go to the <b>night show</b></span></label>
+            <span class="menu-actions"><button class="btn" type="button" data-shows-save="${esc(t.id)}" style="padding:6px 12px">Save</button><button class="linkish" type="button" data-menu-close>Cancel</button></span>
+            <button class="linkish" type="button" data-giveback="${esc(t.id)}">Can't come at all? Give back my seat</button>
+          </div>`
+        : (t.key || !fb) ? `<div class="giveback"><button class="linkish" type="button" data-menu="${esc(t.id)}">Can't make it?</button></div>` : ""}
     </div>
     <div class="side">Admit one</div>
   </div>`;
@@ -1016,7 +1042,9 @@ function renderAdmin(){
       <td>${esc(t.area || (s ? s.area.name : ""))}</td>
       <td>${esc(t.name)}</td>
       <td><span class="rel ${t.relation === "family" ? "family" : ""}">${t.relation === "family" ? "Family" : "Friend"}</span></td>
-      <td><span class="att ${t.missMorning || t.missNight ? "part" : ""}">${comingTo(t)}</span></td>
+      <td>${!fb || adminKey ? `<select class="att-select ${t.missMorning || t.missNight ? "part" : ""}" data-shows="${esc(t.id)}" aria-label="Shows for ${esc(t.name)}">
+        ${[["both","Morning + night"],["morning","Morning only"],["night","Night only"],["neither","Can't make either"]].map(([v, l]) => `<option value="${v}" ${showsValue(t) === v ? "selected" : ""}>${l}</option>`).join("")}
+      </select>` : `<span class="att ${t.missMorning || t.missNight ? "part" : ""}">${comingTo(t)}</span>`}</td>
       <td class="num">${new Date(t.createdAt).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" })}</td>
       <td class="num">${esc(t.code || "")}</td>
       <td>${!fb || adminKey ? (adminConfirm === t.id
@@ -1026,6 +1054,17 @@ function renderAdmin(){
   }).join("");
 }
 $("#aSearch").addEventListener("input", renderAdmin);
+document.addEventListener("change", async e => {
+  const sel = e.target.closest && e.target.closest("select[data-shows]");
+  if (!sel) return;
+  const t = adminRows.find(r => r.id === sel.dataset.shows);
+  if (!t) return;
+  const v = sel.value, mm = v === "night" || v === "neither", mn = v === "morning" || v === "neither";
+  sel.disabled = true;
+  try { await Store.setShows(t, mm, mn, true); toast(`${t.name}: ${comingTo({ missMorning: mm, missNight: mn })}`); }
+  catch(x){ toast("Couldn't change that. Try again."); renderAdmin(); }
+  sel.disabled = false;
+});
 $("#undoBtn").addEventListener("click", adminUndo);
 $("#diceBtn").addEventListener("click", rollDice);
 $("#copyCsv").addEventListener("click", async () => {
@@ -1245,8 +1284,24 @@ document.addEventListener("click", async e => {
   const vbtn = e.target.closest("[data-videos]");
   if (vbtn) return openVideos(vbtn.dataset.videos);
   if (e.target.closest("[data-vclose]") || (e.target === $("#scrim") && videosOpen)) return closeVideos();
+  const menu = e.target.closest("[data-menu]");
+  if (menu){ showMenu = menu.dataset.menu; giveBackAsk = null; return renderMine(); }
+  if (e.target.closest("[data-menu-close]")){ showMenu = null; return renderMine(); }
+  const ss = e.target.closest("[data-shows-save]");
+  if (ss){
+    const t = mine.find(m => m.id === ss.dataset.showsSave);
+    if (!t) return;
+    const mm = !!document.getElementById("mm-" + t.id).checked, mn = !!document.getElementById("mn-" + t.id).checked;
+    ss.disabled = true; ss.textContent = "Saving…";
+    try {
+      await Store.setShows(t, mm, mn, false);
+      t.missMorning = mm; t.missNight = mn; saveMine(); showMenu = null; renderMine();
+      toast(mm && mn ? "Saved. You're down as not coming to either show, but you still have your seat." : `Saved: ${comingTo(t)}.`);
+    } catch(x){ ss.disabled = false; ss.textContent = "Save"; toast("That didn't save. Try again in a moment."); }
+    return;
+  }
   const gb = e.target.closest("[data-giveback]");
-  if (gb){ giveBackAsk = gb.dataset.giveback; return renderMine(); }
+  if (gb){ giveBackAsk = gb.dataset.giveback; showMenu = null; return renderMine(); }
   if (e.target.closest("[data-giveback-no]")){ giveBackAsk = null; return renderMine(); }
   const gby = e.target.closest("[data-giveback-yes]");
   if (gby){
@@ -1331,7 +1386,10 @@ async function syncMine(){
     let now;
     try { now = await Store.findByCode(t.code); } catch(e){ continue; }
     if (now === null){ mine = mine.filter(m => m !== t); changed = true; }
-    else if (now.id !== t.id){ Object.assign(t, { id: now.id, seat: now.seat, area: now.area }); changed = true; }
+    else {
+      if (now.id !== t.id){ Object.assign(t, { id: now.id, seat: now.seat, area: now.area }); changed = true; }
+      if (!!now.missMorning !== !!t.missMorning || !!now.missNight !== !!t.missNight){ t.missMorning = !!now.missMorning; t.missNight = !!now.missNight; changed = true; }
+    }
   }
   if (changed){ saveMine(); renderMine(); }
 }
