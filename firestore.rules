@@ -87,11 +87,11 @@ service cloud.firestore {
                    && request.resource.data.killer is list && request.resource.data.killer.size() <= 30;
     }
 
-    // live/{show}: "now playing" (which side, where in that side's audio, when, playing or paused).
+    // live/{show}: "now playing" (which side and song, how far into it, when, playing or paused).
     match /live/{show} {
       allow read: if true;
       allow write: if adminActing()
-                   && request.resource.data.keys().hasOnly(["side", "pos", "startedAt", "on", "playing", "dur"]);
+                   && request.resource.data.keys().hasOnly(["side", "index", "pos", "startedAt", "on", "playing", "dur"]);
     }
 
     // guestbook/{id}: anyone can leave a message; it only shows on the site

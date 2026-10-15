@@ -288,7 +288,7 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .tl li.now{background:color-mix(in srgb,var(--accent) 18%,transparent);border-radius:var(--radius)}
 .tl li.now span::after{content:" ▶"}
 .tl .len{font:12px/1.6 var(--mono);color:var(--muted);margin-left:auto;padding-left:10px}
-.tl li{grid-template-columns:28px minmax(0,1fr) auto auto;align-items:center}
+.tl li{grid-template-columns:28px minmax(0,1fr) auto;align-items:center}
 .tl li .nm{min-width:0;overflow-wrap:anywhere}
 .vote{background:none;border:1.5px solid currentColor;border-radius:999px;padding:2px 9px;cursor:pointer;font:600 12px/1.4 var(--mono);color:var(--accent);margin-left:8px}
 .vote[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
@@ -320,8 +320,8 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .np-ctrl select{background:var(--ground-2);border:1.5px solid var(--line);border-radius:var(--radius);padding:8px 10px;color:var(--ink);max-width:100%}
 .np-ctrl .btn{padding:8px 12px}
 .np-time{font:600 12px/1 var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
-.tl-row{grid-template-columns:24px 28px minmax(0,1fr) 64px auto}
-.tl-row input.len{text-align:center;padding:8px 4px;font-variant-numeric:tabular-nums}
+.tl-row{grid-template-columns:24px 28px minmax(0,1fr) 18px auto}
+.tl-row .has-audio{color:var(--accent);text-align:center;font-size:16px}
 .votes-list{display:flex;flex-direction:column;gap:6px;font-size:14px}
 .votes-list div{display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:8px;align-items:center}
 .votes-list i{display:block;height:6px;background:var(--accent);border-radius:3px;margin-top:3px}
@@ -495,7 +495,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
           </div>
           <audio id="setAudio" preload="metadata"></audio>
           <div class="np-ctrl">
-            <input type="range" id="npSeek" min="0" max="0" step="1" value="0" aria-label="Position in the full audio" disabled style="flex:1 1 160px;accent-color:var(--accent)">
+            <input type="range" id="npSeek" min="0" max="0" step="1" value="0" aria-label="Position in the current song" disabled style="flex:1 1 160px;accent-color:var(--accent)">
             <span class="np-time" id="npTime">No audio yet</span>
           </div>
           <div class="np-ctrl">
@@ -503,7 +503,6 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
             <button class="btn ghost" type="button" id="npBack">Back</button>
             <button class="btn ghost" type="button" id="npNext">Next</button>
             <button class="btn ghost" type="button" id="npStop">Stop</button>
-            <button class="btn ghost" type="button" id="npMark" disabled>Mark start</button>
           </div>
           <p class="mode-note" id="npHelp"></p>
         </section>
@@ -528,7 +527,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
       </div>
       <div class="tl-admin">
         <h2 class="sec" style="margin-top:8px">Tracklist</h2>
-        <p class="mode-note" style="margin-bottom:12px">Type the song names. The small box is where each song <b>starts in the full audio</b> (use <b>Mark start</b> in Now playing while the audio plays, or type it, like 3:42). Drag a song onto another one (or use the arrows) to switch their places, even between the Pretty and Killer sides. Empty spots show as "To be announced".</p>
+        <p class="mode-note" style="margin-bottom:12px">Type the song names. A <b>♪</b> means that song has its audio file on the site. Drag a song onto another one (or use the arrows) to switch their places, even between the Pretty and Killer sides. Empty spots show as "To be announced".</p>
         <div class="tracks" id="tracksAdmin" style="padding-bottom:0"></div>
         <div class="tl-save">
           <button class="btn" type="button" id="saveTracks">Save tracklist</button>
@@ -764,7 +763,7 @@ const Store = {
     if (!fb){ try { localStorage.setItem("pk-tracklist", JSON.stringify(t)); } catch(e){} Demo.notify(); return; }
     const batch = fb.db.batch();
     batch.set(fb.db.collection("adminTokens").doc("now"), { key: adminKey, at: firebase.firestore.FieldValue.serverTimestamp() });
-    batch.set(fb.db.collection("tracklist").doc("prettykiller"), { pretty: t.pretty, killer: t.killer, prettyStart: t.prettyStart, killerStart: t.killerStart, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    batch.set(fb.db.collection("tracklist").doc("prettykiller"), { pretty: t.pretty, killer: t.killer, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     await batch.commit();
   },
   // admin-only write helper: admin token + one write, in one batch
@@ -773,18 +772,18 @@ const Store = {
     batch.set(fb.db.collection("adminTokens").doc("now"), { key: adminKey, at: firebase.firestore.FieldValue.serverTimestamp() });
     fn(batch); await batch.commit();
   },
-  // ---- now playing: { side, pos (seconds into the side's audio at startedAt), startedAt, on, playing, dur }
+  // ---- now playing: { side, index (tracklist slot), pos (seconds into that song at startedAt), startedAt, on, playing, dur (that song's length) }
   watchLive(cb){
     if (!fb){ const f = () => { try { cb(JSON.parse(localStorage.getItem("pk-live"))); } catch(e){ cb(null); } }; return Demo.watch(f); }
     return fb.db.collection("live").doc("prettykiller").onSnapshot(d => {
       if (!d.exists) return cb(null);
       const v = d.data({ serverTimestamps: "estimate" });
-      cb({ side: v.side, pos: +v.pos || 0, on: !!v.on, playing: !!v.playing, dur: +v.dur || 0, startedAt: v.startedAt && v.startedAt.toMillis ? v.startedAt.toMillis() : Date.now() });
+      cb({ side: v.side, index: +v.index || 0, pos: +v.pos || 0, on: !!v.on, playing: !!v.playing, dur: +v.dur || 0, startedAt: v.startedAt && v.startedAt.toMillis ? v.startedAt.toMillis() : Date.now() });
     }, () => cb(null));
   },
   async setLive(v){
     if (!fb){ try { localStorage.setItem("pk-live", JSON.stringify({ ...v, startedAt: Date.now() })); } catch(e){} Demo.notify(); return; }
-    await this.adminWrite(b => b.set(fb.db.collection("live").doc("prettykiller"), { side: v.side, pos: Math.max(0, +v.pos || 0), on: !!v.on, playing: !!v.playing, dur: Math.max(0, +v.dur || 0), startedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+    await this.adminWrite(b => b.set(fb.db.collection("live").doc("prettykiller"), { side: v.side, index: Math.max(0, Math.round(+v.index || 0)), pos: Math.max(0, +v.pos || 0), on: !!v.on, playing: !!v.playing, dur: Math.max(0, +v.dur || 0), startedAt: firebase.firestore.FieldValue.serverTimestamp() }));
   },
   // ---- guestbook: { name, message, createdAt, approved }
   watchGuestbook(cb, everything){
@@ -1125,7 +1124,7 @@ function startAdmin(){
   $("#adminBody").hidden = false;
   watchTracksOnce(); renderTracksAdmin(); renderNpFrom();
   $("#npSide").value = live && live.on ? live.side : clockSide();
-  renderNpFrom(); loadAudio(npSide()); updateAudioUI();
+  renderNpFrom(); updateAudioUI(); checkFiles();
   if (!gbAdminUnwatch) gbAdminUnwatch = Store.watchGuestbook(l => { gbAll = l; renderGuestbookAdmin(); }, true);
   if (!votesUnwatch) votesUnwatch = Store.watchVotes(l => { votes = l; renderVotesAdmin(); });
   if (adminUnwatch) return;
@@ -1257,13 +1256,10 @@ const fitList = l => { const a = Array.isArray(l) ? l.slice(0, TRACK_SLOTS).map(
 let tracks = { pretty: blankList(), killer: blankList() };          // what's saved
 const zeroList = () => Array(TRACK_SLOTS).fill(0);
 const fitLen = l => { const a = Array.isArray(l) ? l.slice(0, TRACK_SLOTS).map(x => Math.max(0, Math.round(+x || 0))) : []; while (a.length < TRACK_SLOTS) a.push(0); return a; };
-// Start time of each song in the full audio for that side (seconds; -1 = not set yet)
-const unsetList = () => Array(TRACK_SLOTS).fill(-1);
-const fitStart = l => { const a = Array.isArray(l) ? l.slice(0, TRACK_SLOTS).map(x => (x === null || x === undefined || +x < 0 || isNaN(+x)) ? -1 : Math.round(+x)) : []; while (a.length < TRACK_SLOTS) a.push(-1); return a; };
-let starts = { pretty: unsetList(), killer: unsetList() }, draftStart = { pretty: unsetList(), killer: unsetList() };
+
 const fmtT = n => (n == null || n < 0) ? "" : `${Math.floor(n / 3600) ? Math.floor(n / 3600) + ":" + String(Math.floor(n / 60) % 60).padStart(2, "0") : Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, "0")}`;
 const fmtLen = n => n ? fmtT(n) : "";
-const parseT = v => { v = String(v).trim(); if (!v) return -1; const parts = v.split(":").map(x => x.trim()); if (parts.some(x => !/^\d{1,3}$/.test(x)) || parts.length > 3) return -1; return parts.reduce((a, x) => a * 60 + +x, 0); };
+
 let draft = { pretty: blankList(), killer: blankList() };           // what the admin is editing
 let tracksDirty = false, dragFrom = null, tracksUnwatch = null;
 
@@ -1273,7 +1269,7 @@ function renderTracksPublic(){
     <section class="tl ${sd.key}">
       <h3>${sd.title}</h3><span class="label">${sd.sub}</span>
       <ol>${tracks[sd.key].map((name, i) => { const n = name.trim(), on = np && np.side === sd.key && np.index === i, pick = `${sd.key}|${n}`;
-        return `<li class="${on ? "now" : ""}"><span>${String(i + 1).padStart(2, "0")}</span><div class="nm">${n ? esc(n) : `<em class="tba">To be announced</em>`}</div><em class="len"></em>${n ? `<button class="vote" type="button" data-vote="${esc(pick)}" aria-pressed="${myPicks.includes(pick)}" ${voted ? "disabled" : ""} aria-label="Vote for ${esc(n)}">${myPicks.includes(pick) ? "♥" : "♡"}</button>` : "<i></i>"}</li>`; }).join("")}</ol>
+        return `<li class="${on ? "now" : ""}"><span>${String(i + 1).padStart(2, "0")}</span><div class="nm">${n ? esc(n) : `<em class="tba">To be announced</em>`}</div>${n ? `<button class="vote" type="button" data-vote="${esc(pick)}" aria-pressed="${myPicks.includes(pick)}" ${voted ? "disabled" : ""} aria-label="Vote for ${esc(n)}">${myPicks.includes(pick) ? "♥" : "♡"}</button>` : "<i></i>"}</li>`; }).join("")}</ol>
     </section>`).join("");
   $("#tracklistHead").textContent = anySong ? "Tracklist" : "Tracklist · songs coming soon";
   const vb = $("#voteBar");
@@ -1290,7 +1286,7 @@ function renderTracksAdmin(){
           <span class="grip" draggable="true" title="Drag onto another song to switch" aria-hidden="true">⠿</span>
           <b>${i + 1}</b>
           <input type="text" id="tr-${sd.key}-${i}" maxlength="80" value="${esc(name)}" placeholder="Song ${i + 1}" aria-label="${sd.title} song ${i + 1}" data-tside="${sd.key}" data-ti="${i}">
-          <input type="text" class="len" id="len-${sd.key}-${i}" inputmode="numeric" maxlength="8" value="${fmtT(draftStart[sd.key][i])}" placeholder="0:00" title="Where this song starts in the full audio" aria-label="${sd.title} song ${i + 1} starts at (minutes:seconds)" data-lside="${sd.key}" data-li="${i}">
+          <span class="has-audio" title="${name.trim() && fileOK[songFile(sd.key, i, name)] ? "Has an audio file" : ""}">${name.trim() && fileOK[songFile(sd.key, i, name)] ? "♪" : ""}</span>
           <span class="arrows">
             <button type="button" data-tmove="-1" data-tside="${sd.key}" data-ti="${i}" aria-label="Move ${sd.title} song ${i + 1} up" ${i === 0 ? "disabled" : ""}>↑</button>
             <button type="button" data-tmove="1" data-tside="${sd.key}" data-ti="${i}" aria-label="Move ${sd.title} song ${i + 1} down" ${i === TRACK_SLOTS - 1 ? "disabled" : ""}>↓</button>
@@ -1301,23 +1297,19 @@ function renderTracksAdmin(){
 function setTracksDirty(d){ tracksDirty = d; $("#tracksStatus").textContent = d ? "You have unsaved changes." : "No changes."; }
 function swapTracks(a, b){
   const t = draft[a.side][a.i]; draft[a.side][a.i] = draft[b.side][b.i]; draft[b.side][b.i] = t;
-  const l = draftStart[a.side][a.i]; draftStart[a.side][a.i] = draftStart[b.side][b.i]; draftStart[b.side][b.i] = l;
   setTracksDirty(true); renderTracksAdmin();
 }
 function watchTracksOnce(){
   if (tracksUnwatch) return;
   tracksUnwatch = Store.watchTracklist(data => {
     tracks = { pretty: fitList(data && data.pretty), killer: fitList(data && data.killer) };
-    starts = { pretty: fitStart(data && data.prettyStart), killer: fitStart(data && data.killerStart) };
     renderTracksPublic(); renderNowPlaying(); renderNpFrom();
     if (current.view === "admin") renderVotesAdmin();
-    if (!tracksDirty){ draft = { pretty: tracks.pretty.slice(), killer: tracks.killer.slice() }; draftStart = { pretty: starts.pretty.slice(), killer: starts.killer.slice() }; if (current.view === "admin") renderTracksAdmin(); }
+    if (!tracksDirty){ draft = { pretty: tracks.pretty.slice(), killer: tracks.killer.slice() }; if (current.view === "admin"){ renderTracksAdmin(); checkFiles(); } }
   });
 }
 // typing
 document.addEventListener("input", e => {
-  const li = e.target.closest && e.target.closest("#tracksAdmin input[data-lside]");
-  if (li){ draftStart[li.dataset.lside][+li.dataset.li] = parseT(li.value); setTracksDirty(true); return; }
   const inp = e.target.closest && e.target.closest("#tracksAdmin input[data-tside]");
   if (!inp) return;
   draft[inp.dataset.tside][+inp.dataset.ti] = inp.value; setTracksDirty(true);
@@ -1342,42 +1334,35 @@ document.addEventListener("drop", e => {
 document.addEventListener("dragend", () => { dragFrom = null; document.querySelectorAll(".tl-row.over").forEach(r => r.classList.remove("over")); });
 $("#saveTracks").addEventListener("click", async () => {
   const b = $("#saveTracks"); b.disabled = true; b.textContent = "Saving…";
-  const clean = { pretty: draft.pretty.map(x => x.trim()), killer: draft.killer.map(x => x.trim()), prettyStart: draftStart.pretty.slice(), killerStart: draftStart.killer.slice() };
-  try { await Store.saveTracklist(clean); tracks = { pretty: clean.pretty, killer: clean.killer }; starts = { pretty: clean.prettyStart, killer: clean.killerStart };
-        draft = { pretty: clean.pretty.slice(), killer: clean.killer.slice() }; draftStart = { pretty: starts.pretty.slice(), killer: starts.killer.slice() };
+  const clean = { pretty: draft.pretty.map(x => x.trim()), killer: draft.killer.map(x => x.trim()) };
+  try { await Store.saveTracklist(clean); tracks = { pretty: clean.pretty, killer: clean.killer };
+        draft = { pretty: clean.pretty.slice(), killer: clean.killer.slice() }; checkFiles();
         setTracksDirty(false); renderTracksPublic(); renderTracksAdmin(); renderNpFrom(); toast("Tracklist saved"); }
   catch(x){ toast("Couldn't save the tracklist. Try again."); }
   b.disabled = false; b.textContent = "Save tracklist";
 });
 
 /* ---------- Now playing ----------
-   Each side has one full audio file (media/pretty-killer/set-<side>.mp3) and each song has a
-   start time in it. The admin plays/pauses the audio; guests' "Now playing" follows the
-   position. Without audio it runs on a timer (songs without a start time count as 3:30). */
+   Each song can have its own audio file: media/pretty-killer/songs/<song-name>.mp3
+   (song name in lowercase with dashes, e.g. anne.mp3), used on whichever side the song is. The admin page plays the songs one
+   right after another; guests' "Now playing" bar follows. Songs without a file run on a 3:30 timer. */
 const DEFAULT_LEN = 210;
-const AUDIO_SRC = side => `media/pretty-killer/set-${side}.mp3`;
+const slug = n => String(n).toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const songFile = (side, i, name) => `media/pretty-killer/songs/${slug((name ?? tracks[side][i]).trim())}.mp3`;
+const fileOK = {};   // file path -> true / false (checked on the admin page)
 let live = null, np = null;
 const namedSlots = side => (tracks[side] || []).map((n, i) => n.trim() ? i : -1).filter(i => i >= 0);
-// [{ i, s, e }] for each named song in order: start and end in seconds
-function timeline(side, dur){
-  const order = namedSlots(side), st = starts[side] || [], out = [];
-  let prev = -1;
-  order.forEach((i, k) => { let v = st[i] >= 0 ? st[i] : (k === 0 ? 0 : prev + DEFAULT_LEN); if (v < prev) v = prev; out.push({ i, s: v }); prev = v; });
-  out.forEach((x, k) => { x.e = k + 1 < out.length ? out[k + 1].s : (dur > x.s ? dur : x.s + DEFAULT_LEN); if (x.e <= x.s) x.e = x.s + 1; });
-  return out;
-}
 const livePos = () => !live || !live.on ? 0 : live.pos + (live.playing ? Math.max(0, (Date.now() - live.startedAt) / 1000) : 0);
 function computeNowPlaying(){
   if (!live || !live.on) return null;
-  const tl = timeline(live.side, live.dur);
-  if (!tl.length) return null;
-  const p = livePos();
-  for (let k = 0; k < tl.length; k++){
-    const x = tl[k];
-    if (p < x.e || k === 0 && p < x.s){
-      const nx = tl[k + 1];
-      return { side: live.side, index: x.i, name: tracks[live.side][x.i].trim(), next: nx ? tracks[live.side][nx.i].trim() : "", left: Math.max(0, Math.ceil(x.e - Math.max(p, x.s))), frac: Math.max(0, (p - x.s) / (x.e - x.s)), paused: !live.playing };
-    }
+  const order = namedSlots(live.side);
+  if (!order.length) return null;
+  let k = order.indexOf(live.index); if (k < 0) k = 0;
+  let t = livePos();
+  for (; k < order.length; k++){
+    const i = order[k], len = i === live.index && live.dur > 0 ? live.dur : DEFAULT_LEN;
+    if (t < len){ const nx = order[k + 1]; return { side: live.side, index: i, name: tracks[live.side][i].trim(), next: nx != null ? tracks[live.side][nx].trim() : "", at: t, left: Math.max(0, Math.ceil(len - t)), frac: t / len, paused: !live.playing }; }
+    t -= len;
   }
   return { side: live.side, ended: true };
 }
@@ -1393,88 +1378,102 @@ function renderNowPlaying(){
   const now = np && !np.ended ? `${np.side}:${np.index}` : "";
   if (now !== prev && current.view === "tracks") renderTracksPublic();
   const st = $("#npStatus");
-  if (st) st.textContent = !live || !live.on ? "Not playing." : np && np.ended ? "The set is over. Press Stop or play again." : np ? `${np.paused ? "Paused" : "Playing"} · ${side}: ${np.name} · ${fmtT(np.left)} left${np.next ? ` · Next: ${np.next}` : " · Last song"}` : "Add songs to the tracklist first.";
+  if (st) st.textContent = !live || !live.on ? "Not playing." : np && np.ended ? "The set is over." : np ? `${np.paused ? "Paused" : "Playing"} · ${side}: ${np.name} · ${fmtT(np.left)} left${np.next ? ` · Next: ${np.next}` : " · Last song"}` : "Add songs to the tracklist first.";
   $("#npPlay").textContent = live && live.on && live.playing ? "Pause" : "Play";
-  if (current.view === "admin") resyncAudio();
+  if (current.view === "admin") adminTick();
 }
 function renderNpFrom(){
   const sel = $("#npFrom"), side = $("#npSide").value || clockSide(), keep = sel.value;
   const order = namedSlots(side);
-  sel.innerHTML = order.length ? order.map(i => `<option value="${i}">${i + 1}. ${esc(tracks[side][i].trim())}${starts[side][i] >= 0 ? ` · ${fmtT(starts[side][i])}` : ""}</option>`).join("") : `<option value="">Add songs to the tracklist first</option>`;
+  sel.innerHTML = order.length ? order.map(i => `<option value="${i}">${i + 1}. ${esc(tracks[side][i].trim())}${fileOK[songFile(side, i)] ? " ♪" : ""}</option>`).join("") : `<option value="">Add songs to the tracklist first</option>`;
   if (order.includes(+keep)) sel.value = keep;
 }
+// which songs have audio files (admin page)
+async function hasFile(path){
+  if (path in fileOK) return fileOK[path];
+  try { const r = await fetch(path, { method: "HEAD", cache: "no-store" }); fileOK[path] = r.ok; } catch(e){ fileOK[path] = false; }
+  return fileOK[path];
+}
+async function checkFiles(){
+  const paths = SIDES_TL.flatMap(sd => namedSlots(sd.key).map(i => songFile(sd.key, i)));
+  await Promise.all(paths.map(p => { delete fileOK[p]; return hasFile(p); }));
+  if (current.view === "admin"){ renderTracksAdmin(); renderNpFrom(); updateAudioUI(); }
+}
 
-/* admin audio player */
-const au = $("#setAudio"), audioOK = { pretty: null, killer: null };
+/* admin player: plays the songs back to back */
+const au = $("#setAudio");
+let eng = { side: null, index: null, audio: false, busy: false };
 const npSide = () => $("#npSide").value || clockSide();
-const hasAudio = () => audioOK[npSide()] === true && au.dataset.side === npSide();
-function loadAudio(side){
-  if (au.dataset.side === side) return;
-  au.pause(); au.dataset.side = side; audioOK[side] = null; au.src = AUDIO_SRC(side); updateAudioUI();
-}
-au.addEventListener("loadedmetadata", () => { audioOK[au.dataset.side] = true; updateAudioUI(); });
-au.addEventListener("error", () => { audioOK[au.dataset.side] = false; updateAudioUI(); });
-au.addEventListener("timeupdate", updateAudioUI);
-au.addEventListener("ended", () => { if (live && live.on) sendLive({ on: false, playing: false, pos: 0 }); });
-function updateAudioUI(){
-  const ok = hasAudio(), side = npSide() === "pretty" ? "Pretty" : "Killer";
-  const seek = $("#npSeek");
-  seek.disabled = !ok; seek.max = ok ? Math.floor(au.duration) : 0;
-  if (ok && document.activeElement !== seek) seek.value = Math.floor(au.currentTime);
-  $("#npTime").textContent = ok ? `${fmtT(au.currentTime)} / ${fmtT(au.duration)}` : audioOK[npSide()] === null ? "Loading audio…" : "No audio yet";
-  $("#npMark").disabled = !ok;
-  $("#npHelp").innerHTML = ok
-    ? `Play the ${side} side audio. Guests' "Now playing" follows it. To cut it into songs, pick a song above and press <b>Mark start</b> right when it begins (it moves to the next song for you), then press <b>Save tracklist</b>.`
-    : `There's no ${side} side audio on the site yet, so Play runs on a timer (songs without a start time count as 3:30). Send the full audio file to Claude to add it.`;
-}
-// push the current state to everyone
 function sendLive(v){
-  const base = { side: live && live.on ? live.side : npSide(), pos: livePos(), on: !!(live && live.on), playing: !!(live && live.playing), dur: hasAudio() ? au.duration : 0 };
+  const base = { side: live && live.on ? live.side : npSide(), index: live ? live.index : 0, pos: livePos(), on: !!(live && live.on), playing: !!(live && live.playing), dur: live ? live.dur : 0 };
   return Store.setLive({ ...base, ...v }).catch(() => toast("That didn't go through. Try again."));
 }
-// keep the guests' position in step with the real audio
-let lastResync = 0;
-function resyncAudio(){
-  if (!hasAudio() || !live || !live.on || live.side !== au.dataset.side || au.paused) return;
-  if (Date.now() - lastResync < 15000) return;
-  if (Math.abs(au.currentTime - livePos()) > 2){ lastResync = Date.now(); sendLive({ pos: au.currentTime, playing: true }); }
+async function playIndex(side, i, pos = 0){
+  if (eng.busy) return; eng.busy = true;
+  try {
+    const path = songFile(side, i), ok = await hasFile(path);
+    eng = { side, index: i, audio: ok, busy: true };
+    if (ok){
+      if (au.dataset.path !== path){
+        au.dataset.path = path; au.src = path;
+        await new Promise(res => { const done = () => { au.removeEventListener("loadedmetadata", done); res(); }; au.addEventListener("loadedmetadata", done); setTimeout(res, 5000); });
+      }
+      au.currentTime = pos;
+      try { await au.play(); } catch(e){ toast("The audio didn't start. Tap Play again."); return; }
+    } else { au.pause(); }
+    await sendLive({ side, index: i, pos, on: true, playing: true, dur: ok && isFinite(au.duration) ? au.duration : DEFAULT_LEN });
+  } finally { eng.busy = false; updateAudioUI(); }
 }
-function songStart(side, i){ const x = timeline(side, hasAudio() ? au.duration : 0).find(t => t.i === i); return x ? x.s : 0; }
-$("#npSide").addEventListener("change", () => { renderNpFrom(); loadAudio(npSide()); });
+function nextAfter(side, i){ const order = namedSlots(side), k = order.indexOf(i); return order[k + 1]; }
+async function playNext(){
+  if (!live || !live.on) return;
+  const nx = nextAfter(live.side, eng.index ?? live.index);
+  if (nx == null){ au.pause(); return sendLive({ on: false, playing: false, pos: 0 }); }
+  await playIndex(live.side, nx, 0);
+}
+au.addEventListener("ended", () => { if (live && live.on && eng.audio) playNext(); });
+au.addEventListener("timeupdate", () => updateAudioUI());
+// every second on the admin page: start the next song when a timer song runs out, and keep guests in step
+let lastResync = 0;
+function adminTick(){
+  updateAudioUI();
+  if (!live || !live.on || !live.playing || eng.busy) return;
+  if (!eng.audio && np && !np.ended && np.index !== live.index){ playIndex(live.side, np.index, 0); return; }
+  if (!eng.audio && np && np.ended){ sendLive({ on: false, playing: false, pos: 0 }); return; }
+  if (eng.audio && !au.paused && Date.now() - lastResync > 15000 && Math.abs(au.currentTime - livePos()) > 2){ lastResync = Date.now(); sendLive({ pos: au.currentTime }); }
+}
+function updateAudioUI(){
+  const seek = $("#npSeek"), on = live && live.on, a = on && eng.audio && isFinite(au.duration);
+  seek.disabled = !a; seek.max = a ? Math.floor(au.duration) : 0;
+  if (a && document.activeElement !== seek) seek.value = Math.floor(au.currentTime);
+  $("#npTime").textContent = a ? `${fmtT(au.currentTime)} / ${fmtT(au.duration)}` : on ? "Timer song (no audio file)" : "Stopped";
+  const withAudio = SIDES_TL.reduce((n, sd) => n + namedSlots(sd.key).filter(i => fileOK[songFile(sd.key, i)]).length, 0);
+  $("#npHelp").innerHTML = `Press <b>Play</b> once and the songs play <b>one right after another</b>, and guests' "Now playing" follows. Keep this page open during the show. ${withAudio ? `${withAudio} song${withAudio === 1 ? " has" : "s have"} audio (♪); the others run on a 3:30 timer.` : `No songs have audio files yet, so each song runs on a 3:30 timer. Send each song's audio file to Claude to add it.`}`;
+}
+$("#npSide").addEventListener("change", renderNpFrom);
 $("#npPlay").addEventListener("click", async () => {
-  const side = npSide();
-  if (live && live.on && live.playing){                       // pause
-    const pos = hasAudio() && live.side === au.dataset.side ? au.currentTime : livePos();
-    au.pause(); return sendLive({ pos, playing: false });
+  if (live && live.on && live.playing){                           // pause
+    const pos = eng.audio ? au.currentTime : (np && !np.ended ? np.at : 0);
+    au.pause(); return sendLive({ index: np && !np.ended ? np.index : live.index, pos, playing: false });
   }
-  const v = $("#npFrom").value;
-  if (v === "" && !(live && live.on)) return toast("Add song names to the tracklist first.");
-  const resume = live && live.on && live.side === side;
-  const pos = resume ? livePos() : songStart(side, +v);
-  if (hasAudio()){ au.currentTime = pos; try { await au.play(); } catch(e){ return toast("The audio didn't start. Tap Play again."); } }
-  sendLive({ side, pos, on: true, playing: true, dur: hasAudio() ? au.duration : 0 });
+  if (live && live.on && !live.playing){                          // resume
+    if (eng.audio){ try { await au.play(); } catch(e){ return toast("The audio didn't start. Tap Play again."); } }
+    return sendLive({ playing: true, pos: eng.audio ? au.currentTime : live.pos });
+  }
+  const v = $("#npFrom").value;                                    // start
+  if (v === "") return toast("Add song names to the tracklist first.");
+  playIndex(npSide(), +v, 0);
 });
-$("#npStop").addEventListener("click", () => { au.pause(); if (hasAudio()) au.currentTime = 0; if (live) sendLive({ on: false, playing: false, pos: 0 }); });
+$("#npStop").addEventListener("click", () => { au.pause(); eng.audio = false; if (live) sendLive({ on: false, playing: false, pos: 0 }); });
 function npStep(d){
   if (!live || !live.on || !np || np.ended) return toast("Press Play first.");
-  const tl = timeline(live.side, live.dur), k = tl.findIndex(x => x.i === np.index) + d;
-  if (k >= tl.length) return toast("That was the last song.");
-  const pos = tl[Math.max(0, k)].s;
-  if (hasAudio() && live.side === au.dataset.side) au.currentTime = pos;
-  sendLive({ pos });
+  const order = namedSlots(live.side), k = order.indexOf(np.index) + d;
+  if (k >= order.length) return toast("That was the last song.");
+  playIndex(live.side, order[Math.max(0, k)], 0);
 }
 $("#npNext").addEventListener("click", () => npStep(1));
 $("#npBack").addEventListener("click", () => npStep(-1));
-$("#npSeek").addEventListener("change", e => { if (!hasAudio()) return; au.currentTime = +e.target.value; if (live && live.on && live.side === au.dataset.side) sendLive({ pos: au.currentTime }); });
-$("#npMark").addEventListener("click", () => {
-  if (!hasAudio()) return;
-  const side = npSide(), sel = $("#npFrom"), i = +sel.value;
-  if (sel.value === "") return toast("Add song names to the tracklist first.");
-  draftStart[side][i] = Math.floor(au.currentTime); setTracksDirty(true); renderTracksAdmin();
-  const order = namedSlots(side), nx = order[order.indexOf(i) + 1];
-  toast(`${tracks[side][i].trim()} starts at ${fmtT(draftStart[side][i])}. Press Save tracklist when you're done.`);
-  if (nx != null) sel.value = String(nx);
-});
+$("#npSeek").addEventListener("change", e => { if (!eng.audio) return; au.currentTime = +e.target.value; sendLive({ pos: au.currentTime }); });
 setInterval(renderNowPlaying, 1000);
 
 /* ---------- Song votes ---------- */
