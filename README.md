@@ -10,6 +10,14 @@ Free ticket site for Finn Shapiro's shows at 15 Freeman Parkway, in the same Pre
 - **Admin:** open the site with your private `#admin-…` link (it isn't written anywhere in this repo; only its SHA-256 is, in `CONFIG.adminHash` and `firestore.rules`). From the admin page you can see the seat map with names, **move** people to another seat and **release** seats.
 - **Testing:** type `am` or `pm` anywhere on the page to switch sides, and `auto` to follow the clock again.
 
+## Show day and extras
+
+- **Seat opened alert:** when a sold-out show gets a free seat, the button switches back to **Find tickets**, the card says how few are left, and anyone with the site open gets a heads-up.
+- **Door QR code:** on the admin page (with a download). It opens `confirmed.html`, which is just the Ticket Confirmed picture on black.
+- **Now playing:** on the admin page, press **Start** once; it moves to the next song by itself using the song lengths in the tracklist (no length = 3:30). **Next** / **Back** fix drift, **Stop** ends it. Guests see a "Now playing" bar on every page.
+- **Song voting:** on the tracklist page guests pick up to 3 songs per side and send their votes once; the admin page shows the totals and can reset them.
+- **Guestbook:** guests leave a message at `#guestbook`; it shows up only after you approve it on the admin page (Approve / Hide / Delete). Messages waiting for approval aren't shown on the site, but can be read by anyone who queries the database directly.
+
 ## Firebase
 
 The site is connected to the Firebase project **finn-pretty-killer-tix** (Firestore database plus security rules).

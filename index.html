@@ -277,6 +277,55 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .tl-save{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
 @media (max-width:760px){ .tracks{grid-template-columns:1fr} }
 
+/* now playing banner */
+.np{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;padding:10px 14px;border-radius:var(--radius);background:var(--ink);color:var(--ground);font-size:14px;text-decoration:none}
+.np .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);flex:none;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.np b{color:var(--accent)}
+.np .bar{flex:1 1 120px;height:4px;background:rgba(255,255,255,.18);border-radius:2px;overflow:hidden;min-width:80px}
+.np .bar i{display:block;height:100%;background:var(--accent)}
+.np small{opacity:.75}
+.tl li.now{background:color-mix(in srgb,var(--accent) 18%,transparent);border-radius:var(--radius)}
+.tl li.now span::after{content:" ▶"}
+.tl .len{font:12px/1.6 var(--mono);color:var(--muted);margin-left:auto;padding-left:10px}
+.tl li{grid-template-columns:28px minmax(0,1fr) auto auto;align-items:center}
+.tl li .nm{min-width:0;overflow-wrap:anywhere}
+.vote{background:none;border:1.5px solid currentColor;border-radius:999px;padding:2px 9px;cursor:pointer;font:600 12px/1.4 var(--mono);color:var(--accent);margin-left:8px}
+.vote[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.vote:disabled{cursor:default;opacity:.8}
+.vote-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:-36px 0 56px}
+/* cards linking to pages */
+.cta-card{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--ink);color:var(--ground);padding:16px 18px;border-radius:var(--radius);text-decoration:none;box-shadow:var(--shadow);margin-top:14px}
+.cta-card b{font:900 22px/1.1 var(--display);color:var(--accent)}
+[data-side="killer"] .cta-card b{font-weight:400;text-transform:uppercase}
+.cta-card .btn{background:var(--accent);color:var(--accent-ink)}
+/* guestbook */
+.gb-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:20px;padding-bottom:56px;align-items:start}
+.gb-form{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:12px}
+.gb-form textarea{background:var(--ground-2);border:1.5px solid var(--line);border-radius:var(--radius);padding:11px 12px;min-height:120px;resize:vertical;font:inherit;color:inherit}
+.gb-count{font:12px/1 var(--mono);color:var(--muted);text-align:right}
+.gb-list{display:flex;flex-direction:column;gap:12px}
+.gb-msg{background:var(--surface);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+.gb-msg p{margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere}
+.gb-msg footer{all:unset;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font:12px/1.2 var(--mono);color:var(--muted)}
+.gb-msg footer b{color:var(--ink);font-family:var(--body)}
+.gb-msg .acts{margin-left:auto;display:flex;gap:10px}
+/* admin extras */
+.admin-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:16px}
+.acard{background:var(--surface);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:10px}
+.acard h3{margin:0;font:900 20px/1.1 var(--display)}
+[data-side="killer"] .acard h3{font-weight:400;text-transform:uppercase}
+.qr-img{width:180px;height:180px;background:#fff;padding:6px;border-radius:var(--radius);align-self:flex-start}
+.np-ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.np-ctrl select{background:var(--ground-2);border:1.5px solid var(--line);border-radius:var(--radius);padding:8px 10px;color:var(--ink);max-width:100%}
+.np-ctrl .btn{padding:8px 12px}
+.tl-row{grid-template-columns:24px 28px minmax(0,1fr) 64px auto}
+.tl-row input.len{text-align:center;padding:8px 4px;font-variant-numeric:tabular-nums}
+.votes-list{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.votes-list div{display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:8px;align-items:center}
+.votes-list i{display:block;height:6px;background:var(--accent);border-radius:3px;margin-top:3px}
+@media (max-width:760px){ .gb-wrap{grid-template-columns:1fr} }
+
 footer{border-top:1px solid var(--line);padding-block:24px 40px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;background:var(--surface);color:var(--ink);font-family:var(--mono)}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--ground);padding:10px 18px;border-radius:var(--radius);font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
@@ -303,6 +352,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
     <div class="side-pill"><i></i><span id="sideName">AM · Pretty side</span></div>
     <a class="btn" href="#mine" id="myBtn">My tickets <span class="count" id="myCount">0</span></a>
   </header>
+  <a class="np" id="nowPlaying" href="#tracklist" hidden></a>
 
   <!-- HOME -->
   <section id="view-home">
@@ -322,6 +372,10 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
   <section id="home-body">
     <h2 class="sec">Shows</h2>
     <div class="events" id="events"></div>
+    <a class="cta-card" href="#guestbook">
+      <div><b>Guestbook</b><br><span>Leave a message for Finn.</span></div>
+      <span class="btn">Sign the guestbook ▶</span>
+    </a>
 
     <div id="mine" hidden>
       <h2 class="sec">My tickets</h2>
@@ -369,6 +423,29 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
       </div>
     </div>
     <div class="tracks" id="tracksPublic"></div>
+    <div class="vote-bar" id="voteBar"></div>
+  </section>
+
+  <!-- GUESTBOOK -->
+  <section id="view-guestbook" hidden>
+    <a class="back" href="#">← All shows</a>
+    <div class="ev-head">
+      <div>
+        <div class="label">Finn Shapiro · Pretty Killer Tour</div>
+        <h1>Guestbook</h1>
+        <p>Leave a message for Finn. Finn reads every message before it shows up here.</p>
+      </div>
+    </div>
+    <div class="gb-wrap">
+      <form class="gb-form" id="gbForm" novalidate>
+        <div class="field"><label class="label" for="gbName">Your name</label><input id="gbName" type="text" maxlength="40" autocomplete="name"></div>
+        <div class="field"><label class="label" for="gbMsg">Your message</label><textarea id="gbMsg" maxlength="280"></textarea><div class="gb-count" id="gbCount">0 / 280</div></div>
+        <p class="err" id="gbErr" hidden></p>
+        <button class="btn" type="submit" id="gbSend">Send to Finn</button>
+        <p class="mode-note" id="gbNote"></p>
+      </form>
+      <div class="gb-list" id="gbList"></div>
+    </div>
   </section>
 
   <!-- VINTAGE TOUR MEMORIES -->
@@ -401,6 +478,29 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
 
     <div id="adminBody" hidden>
       <div class="stats" id="stats"></div>
+      <div class="admin-cards">
+        <section class="acard">
+          <h3>Door QR code</h3>
+          <img class="qr-img" src="media/pretty-killer/qr-confirmed.svg" alt="QR code that opens the Ticket Confirmed page">
+          <p class="mode-note">Scanning it opens the <a href="confirmed.html" target="_blank" rel="noopener">Ticket Confirmed</a> page.</p>
+          <a class="btn ghost" href="media/pretty-killer/qr-confirmed.png" download="ticket-confirmed-qr.png" style="align-self:flex-start">Download QR code</a>
+        </section>
+        <section class="acard">
+          <h3>Now playing</h3>
+          <p class="mode-note" id="npStatus">Not playing.</p>
+          <div class="np-ctrl">
+            <select id="npSide" aria-label="Which side"><option value="pretty">Pretty side</option><option value="killer">Killer side</option></select>
+            <select id="npFrom" aria-label="Start from song"></select>
+          </div>
+          <div class="np-ctrl">
+            <button class="btn" type="button" id="npStart">Start</button>
+            <button class="btn ghost" type="button" id="npBack">Back</button>
+            <button class="btn ghost" type="button" id="npNext">Next</button>
+            <button class="btn ghost" type="button" id="npStop">Stop</button>
+          </div>
+          <p class="mode-note">Press Start once. It moves to the next song by itself using the song lengths in the tracklist below (songs without a length count as 3:30). Use Next or Back if it drifts.</p>
+        </section>
+      </div>
       <div class="map-card admin-map">
         <div class="label" style="margin-bottom:10px">Seat map · Pretty Killer Tour · tap a seat to find it in the list</div>
         <div class="move-bar" id="moveBar" hidden></div>
@@ -427,6 +527,17 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
           <button class="btn" type="button" id="saveTracks">Save tracklist</button>
           <span class="mode-note" id="tracksStatus">No changes.</span>
         </div>
+      </div>
+      <div class="admin-cards" style="margin-bottom:56px">
+        <section class="acard">
+          <h3 id="gbAdminHead">Guestbook</h3>
+          <div class="gb-list" id="gbAdmin"></div>
+        </section>
+        <section class="acard">
+          <h3 id="votesHead">Song votes</h3>
+          <div id="votesAdmin"></div>
+          <div id="votesReset"></div>
+        </section>
       </div>
     </div>
   </section>
@@ -643,11 +754,60 @@ const Store = {
     return fb.db.collection("tracklist").doc("prettykiller").onSnapshot(d => cb(d.exists ? d.data() : null), () => cb(null));
   },
   async saveTracklist(t){
-    if (!fb){ try { localStorage.setItem("pk-tracklist", JSON.stringify(t)); } catch(e){} return; }
+    if (!fb){ try { localStorage.setItem("pk-tracklist", JSON.stringify(t)); } catch(e){} Demo.notify(); return; }
     const batch = fb.db.batch();
     batch.set(fb.db.collection("adminTokens").doc("now"), { key: adminKey, at: firebase.firestore.FieldValue.serverTimestamp() });
-    batch.set(fb.db.collection("tracklist").doc("prettykiller"), { pretty: t.pretty, killer: t.killer, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    batch.set(fb.db.collection("tracklist").doc("prettykiller"), { pretty: t.pretty, killer: t.killer, prettyLen: t.prettyLen, killerLen: t.killerLen, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     await batch.commit();
+  },
+  // admin-only write helper: admin token + one write, in one batch
+  async adminWrite(fn){
+    const batch = fb.db.batch();
+    batch.set(fb.db.collection("adminTokens").doc("now"), { key: adminKey, at: firebase.firestore.FieldValue.serverTimestamp() });
+    fn(batch); await batch.commit();
+  },
+  // ---- now playing: { side, startIndex, startedAt, on }
+  watchLive(cb){
+    if (!fb){ const f = () => { try { cb(JSON.parse(localStorage.getItem("pk-live"))); } catch(e){ cb(null); } }; return Demo.watch(f); }
+    return fb.db.collection("live").doc("prettykiller").onSnapshot(d => {
+      if (!d.exists) return cb(null);
+      const v = d.data({ serverTimestamps: "estimate" });
+      cb({ side: v.side, startIndex: v.startIndex, on: !!v.on, startedAt: v.startedAt && v.startedAt.toMillis ? v.startedAt.toMillis() : Date.now() });
+    }, () => cb(null));
+  },
+  async setLive(v){
+    if (!fb){ try { localStorage.setItem("pk-live", JSON.stringify({ ...v, startedAt: Date.now() })); } catch(e){} Demo.notify(); return; }
+    await this.adminWrite(b => b.set(fb.db.collection("live").doc("prettykiller"), { side: v.side, startIndex: v.startIndex, on: v.on, startedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+  },
+  // ---- guestbook: { name, message, createdAt, approved }
+  watchGuestbook(cb, everything){
+    if (!fb){ const f = () => { let l = []; try { l = JSON.parse(localStorage.getItem("pk-guestbook")) || []; } catch(e){} cb(everything ? l : l.filter(m => m.approved)); }; return Demo.watch(f); }
+    const q = everything ? fb.db.collection("guestbook") : fb.db.collection("guestbook").where("approved", "==", true);
+    return q.onSnapshot(snap => cb(snap.docs.map(d => { const m = d.data({ serverTimestamps: "estimate" }); return { id: d.id, ...m, createdAt: m.createdAt && m.createdAt.toMillis ? m.createdAt.toMillis() : Date.now() }; })), () => cb([]));
+  },
+  async addMessage(name, message){
+    if (!fb){ let l = []; try { l = JSON.parse(localStorage.getItem("pk-guestbook")) || []; } catch(e){} l.push({ id: makeKey(), name, message, approved: false, createdAt: Date.now() }); try { localStorage.setItem("pk-guestbook", JSON.stringify(l)); } catch(e){} Demo.notify(); return; }
+    await fb.db.collection("guestbook").add({ name, message, approved: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  },
+  async moderate(id, action){   // "approve" | "hide" | "delete"
+    if (!fb){ let l = []; try { l = JSON.parse(localStorage.getItem("pk-guestbook")) || []; } catch(e){}
+      l = action === "delete" ? l.filter(m => m.id !== id) : l.map(m => m.id === id ? { ...m, approved: action === "approve" } : m);
+      try { localStorage.setItem("pk-guestbook", JSON.stringify(l)); } catch(e){} Demo.notify(); return; }
+    const ref = fb.db.collection("guestbook").doc(id);
+    await this.adminWrite(b => action === "delete" ? b.delete(ref) : b.update(ref, { approved: action === "approve" }));
+  },
+  // ---- song votes: { picks:["pretty|Song", ...], createdAt }
+  watchVotes(cb){
+    if (!fb){ const f = () => { let l = []; try { l = JSON.parse(localStorage.getItem("pk-votes")) || []; } catch(e){} cb(l); }; return Demo.watch(f); }
+    return fb.db.collection("votes").onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, picks: d.data().picks || [] }))), () => cb([]));
+  },
+  async addVote(picks){
+    if (!fb){ let l = []; try { l = JSON.parse(localStorage.getItem("pk-votes")) || []; } catch(e){} l.push({ id: makeKey(), picks }); try { localStorage.setItem("pk-votes", JSON.stringify(l)); } catch(e){} Demo.notify(); return; }
+    await fb.db.collection("votes").add({ picks, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  },
+  async resetVotes(ids){
+    if (!fb){ try { localStorage.removeItem("pk-votes"); } catch(e){} Demo.notify(); return; }
+    await this.adminWrite(b => ids.slice(0, 450).forEach(id => b.delete(fb.db.collection("votes").doc(id))));
   },
   // Change which shows someone is coming to (they keep their seat).
   // Owner: proves it with the key on their device, written to ownerTokens/{id}
@@ -956,7 +1116,11 @@ async function openAdmin(){
 }
 function startAdmin(){
   $("#adminBody").hidden = false;
-  watchTracksOnce(); renderTracksAdmin();
+  watchTracksOnce(); renderTracksAdmin(); renderNpFrom();
+  $("#npSide").value = live && live.on ? live.side : clockSide();
+  renderNpFrom();
+  if (!gbAdminUnwatch) gbAdminUnwatch = Store.watchGuestbook(l => { gbAll = l; renderGuestbookAdmin(); }, true);
+  if (!votesUnwatch) votesUnwatch = Store.watchVotes(l => { votes = l; renderVotesAdmin(); });
   if (adminUnwatch) return;
   adminUnwatch = Store.watchTickets(rows => { adminRows = rows.filter(t => !t.test); testRows = rows.filter(t => t.test); renderAdmin(); },
     () => { $("#rows").innerHTML = `<tr><td colspan="8" class="empty">The ticket list didn't load. Check your connection and reload the page.</td></tr>`; });
@@ -1084,6 +1248,11 @@ const SIDES_TL = [
 const blankList = () => Array(TRACK_SLOTS).fill("");
 const fitList = l => { const a = Array.isArray(l) ? l.slice(0, TRACK_SLOTS).map(x => String(x ?? "")) : []; while (a.length < TRACK_SLOTS) a.push(""); return a; };
 let tracks = { pretty: blankList(), killer: blankList() };          // what's saved
+const zeroList = () => Array(TRACK_SLOTS).fill(0);
+const fitLen = l => { const a = Array.isArray(l) ? l.slice(0, TRACK_SLOTS).map(x => Math.max(0, Math.round(+x || 0))) : []; while (a.length < TRACK_SLOTS) a.push(0); return a; };
+let lens = { pretty: zeroList(), killer: zeroList() }, draftLen = { pretty: zeroList(), killer: zeroList() };
+const fmtLen = n => n ? `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}` : "";
+const parseLen = v => { v = String(v).trim(); if (!v) return 0; const m = v.match(/^(\d{1,2})(?::(\d{1,2}))?$/); if (!m) return 0; return m[2] === undefined ? +m[1] * 60 : +m[1] * 60 + +m[2]; };
 let draft = { pretty: blankList(), killer: blankList() };           // what the admin is editing
 let tracksDirty = false, dragFrom = null, tracksUnwatch = null;
 
@@ -1092,9 +1261,14 @@ function renderTracksPublic(){
   $("#tracksPublic").innerHTML = SIDES_TL.map(sd => `
     <section class="tl ${sd.key}">
       <h3>${sd.title}</h3><span class="label">${sd.sub}</span>
-      <ol>${tracks[sd.key].map((name, i) => `<li><span>${String(i + 1).padStart(2, "0")}</span>${name.trim() ? esc(name.trim()) : `<em class="tba">To be announced</em>`}</li>`).join("")}</ol>
+      <ol>${tracks[sd.key].map((name, i) => { const n = name.trim(), on = np && np.side === sd.key && np.index === i, pick = `${sd.key}|${n}`;
+        return `<li class="${on ? "now" : ""}"><span>${String(i + 1).padStart(2, "0")}</span><div class="nm">${n ? esc(n) : `<em class="tba">To be announced</em>`}</div><em class="len">${fmtLen(lens[sd.key][i])}</em>${n ? `<button class="vote" type="button" data-vote="${esc(pick)}" aria-pressed="${myPicks.includes(pick)}" ${voted ? "disabled" : ""} aria-label="Vote for ${esc(n)}">${myPicks.includes(pick) ? "♥" : "♡"}</button>` : "<i></i>"}</li>`; }).join("")}</ol>
     </section>`).join("");
   $("#tracklistHead").textContent = anySong ? "Tracklist" : "Tracklist · songs coming soon";
+  const vb = $("#voteBar");
+  vb.innerHTML = !anySong ? "" : voted
+    ? `<span class="mode-note">Thanks for voting! Finn can see which songs people want most.</span>`
+    : `<span class="mode-note">Tap ♡ on up to ${VOTE_MAX} songs per side that you most want to hear.</span><button class="btn" type="button" id="sendVotes" ${myPicks.length ? "" : "disabled"}>Send my votes (${myPicks.length})</button>`;
 }
 function renderTracksAdmin(){
   $("#tracksAdmin").innerHTML = SIDES_TL.map(sd => `
@@ -1105,6 +1279,7 @@ function renderTracksAdmin(){
           <span class="grip" draggable="true" title="Drag onto another song to switch" aria-hidden="true">⠿</span>
           <b>${i + 1}</b>
           <input type="text" id="tr-${sd.key}-${i}" maxlength="80" value="${esc(name)}" placeholder="Song ${i + 1}" aria-label="${sd.title} song ${i + 1}" data-tside="${sd.key}" data-ti="${i}">
+          <input type="text" class="len" id="len-${sd.key}-${i}" inputmode="numeric" maxlength="5" value="${fmtLen(draftLen[sd.key][i])}" placeholder="3:30" aria-label="Length of ${sd.title} song ${i + 1} (minutes:seconds)" data-lside="${sd.key}" data-li="${i}">
           <span class="arrows">
             <button type="button" data-tmove="-1" data-tside="${sd.key}" data-ti="${i}" aria-label="Move ${sd.title} song ${i + 1} up" ${i === 0 ? "disabled" : ""}>↑</button>
             <button type="button" data-tmove="1" data-tside="${sd.key}" data-ti="${i}" aria-label="Move ${sd.title} song ${i + 1} down" ${i === TRACK_SLOTS - 1 ? "disabled" : ""}>↓</button>
@@ -1115,18 +1290,23 @@ function renderTracksAdmin(){
 function setTracksDirty(d){ tracksDirty = d; $("#tracksStatus").textContent = d ? "You have unsaved changes." : "No changes."; }
 function swapTracks(a, b){
   const t = draft[a.side][a.i]; draft[a.side][a.i] = draft[b.side][b.i]; draft[b.side][b.i] = t;
+  const l = draftLen[a.side][a.i]; draftLen[a.side][a.i] = draftLen[b.side][b.i]; draftLen[b.side][b.i] = l;
   setTracksDirty(true); renderTracksAdmin();
 }
 function watchTracksOnce(){
   if (tracksUnwatch) return;
   tracksUnwatch = Store.watchTracklist(data => {
     tracks = { pretty: fitList(data && data.pretty), killer: fitList(data && data.killer) };
-    renderTracksPublic();
-    if (!tracksDirty){ draft = { pretty: tracks.pretty.slice(), killer: tracks.killer.slice() }; if (current.view === "admin") renderTracksAdmin(); }
+    lens = { pretty: fitLen(data && data.prettyLen), killer: fitLen(data && data.killerLen) };
+    renderTracksPublic(); renderNowPlaying(); renderNpFrom();
+    if (current.view === "admin") renderVotesAdmin();
+    if (!tracksDirty){ draft = { pretty: tracks.pretty.slice(), killer: tracks.killer.slice() }; draftLen = { pretty: lens.pretty.slice(), killer: lens.killer.slice() }; if (current.view === "admin") renderTracksAdmin(); }
   });
 }
 // typing
 document.addEventListener("input", e => {
+  const li = e.target.closest && e.target.closest("#tracksAdmin input[data-lside]");
+  if (li){ draftLen[li.dataset.lside][+li.dataset.li] = parseLen(li.value); setTracksDirty(true); return; }
   const inp = e.target.closest && e.target.closest("#tracksAdmin input[data-tside]");
   if (!inp) return;
   draft[inp.dataset.tside][+inp.dataset.ti] = inp.value; setTracksDirty(true);
@@ -1151,10 +1331,138 @@ document.addEventListener("drop", e => {
 document.addEventListener("dragend", () => { dragFrom = null; document.querySelectorAll(".tl-row.over").forEach(r => r.classList.remove("over")); });
 $("#saveTracks").addEventListener("click", async () => {
   const b = $("#saveTracks"); b.disabled = true; b.textContent = "Saving…";
-  const clean = { pretty: draft.pretty.map(x => x.trim()), killer: draft.killer.map(x => x.trim()) };
-  try { await Store.saveTracklist(clean); tracks = clean; draft = { pretty: clean.pretty.slice(), killer: clean.killer.slice() }; setTracksDirty(false); renderTracksPublic(); renderTracksAdmin(); toast("Tracklist saved"); }
+  const clean = { pretty: draft.pretty.map(x => x.trim()), killer: draft.killer.map(x => x.trim()), prettyLen: draftLen.pretty.slice(), killerLen: draftLen.killer.slice() };
+  try { await Store.saveTracklist(clean); tracks = { pretty: clean.pretty, killer: clean.killer }; lens = { pretty: clean.prettyLen, killer: clean.killerLen };
+        draft = { pretty: clean.pretty.slice(), killer: clean.killer.slice() }; draftLen = { pretty: lens.pretty.slice(), killer: lens.killer.slice() };
+        setTracksDirty(false); renderTracksPublic(); renderTracksAdmin(); renderNpFrom(); toast("Tracklist saved"); }
   catch(x){ toast("Couldn't save the tracklist. Try again."); }
   b.disabled = false; b.textContent = "Save tracklist";
+});
+
+/* ---------- Now playing (moves on by itself using song lengths) ---------- */
+const DEFAULT_LEN = 210;   // songs without a length count as 3:30
+let live = null, np = null;  // live = saved state; np = computed { side, index, name, next, left, frac } or null
+const namedSlots = side => (tracks[side] || []).map((n, i) => n.trim() ? i : -1).filter(i => i >= 0);
+function computeNowPlaying(){
+  if (!live || !live.on) return null;
+  const order = namedSlots(live.side);
+  let k = order.indexOf(live.startIndex); if (k < 0) k = 0;
+  let t = Math.max(0, (Date.now() - live.startedAt) / 1000);
+  for (; k < order.length; k++){
+    const i = order[k], len = lens[live.side][i] || DEFAULT_LEN;
+    if (t < len){ const nx = order[k + 1]; return { side: live.side, index: i, name: tracks[live.side][i].trim(), next: nx != null ? tracks[live.side][nx].trim() : "", left: Math.ceil(len - t), frac: t / len }; }
+    t -= len;
+  }
+  return { side: live.side, ended: true };
+}
+function renderNowPlaying(){
+  const prev = np && !np.ended ? `${np.side}:${np.index}` : "";
+  np = computeNowPlaying();
+  const el = $("#nowPlaying"), side = np && (np.side === "pretty" ? "Pretty side" : "Killer side");
+  if (!np || np.ended){ el.hidden = true; }
+  else {
+    el.hidden = false;
+    el.innerHTML = `<span class="dot" aria-hidden="true"></span><span>Now playing · ${side}: <b>${esc(np.name)}</b></span><span class="bar" aria-hidden="true"><i style="width:${Math.min(100, np.frac * 100).toFixed(1)}%"></i></span><small>${fmtLen(np.left) || "0:00"} left${np.next ? ` · Next: ${esc(np.next)}` : " · Last song"}</small>`;
+  }
+  const now = np && !np.ended ? `${np.side}:${np.index}` : "";
+  if (now !== prev && current.view === "tracks") renderTracksPublic();
+  const st = $("#npStatus");
+  if (st) st.textContent = !live || !live.on ? "Not playing." : np.ended ? "The set is over. Press Stop or start again." : `${side}: ${np.name} · ${fmtLen(np.left)} left${np.next ? ` · Next: ${np.next}` : " · Last song"}`;
+}
+function renderNpFrom(){
+  const sel = $("#npFrom"), side = $("#npSide").value || clockSide(), keep = sel.value;
+  const order = namedSlots(side);
+  sel.innerHTML = order.length ? order.map(i => `<option value="${i}">${i + 1}. ${esc(tracks[side][i].trim())}</option>`).join("") : `<option value="">Add songs to the tracklist first</option>`;
+  if (order.includes(+keep)) sel.value = keep;
+}
+$("#npSide").addEventListener("change", renderNpFrom);
+$("#npStart").addEventListener("click", () => {
+  const v = $("#npFrom").value; if (v === ""){ return toast("Add song names to the tracklist first."); }
+  Store.setLive({ side: $("#npSide").value || clockSide(), startIndex: +v, on: true }).then(() => toast("Started. It moves to the next song by itself.")).catch(() => toast("That didn't go through. Try again."));
+});
+$("#npStop").addEventListener("click", () => { if (live) Store.setLive({ side: live.side, startIndex: live.startIndex, on: false }).catch(() => toast("That didn't go through. Try again.")); });
+function npStep(d){
+  if (!live || !live.on || !np || np.ended) return toast("Press Start first.");
+  const order = namedSlots(live.side), k = order.indexOf(np.index) + d;
+  if (k < 0) return Store.setLive({ side: live.side, startIndex: order[0], on: true });
+  if (k >= order.length) return toast("That was the last song.");
+  Store.setLive({ side: live.side, startIndex: order[k], on: true }).catch(() => toast("That didn't go through. Try again."));
+}
+$("#npNext").addEventListener("click", () => npStep(1));
+$("#npBack").addEventListener("click", () => npStep(-1));
+setInterval(renderNowPlaying, 1000);
+
+/* ---------- Song votes ---------- */
+const VOTE_MAX = 3;
+let myPicks = [], voted = false, votes = [], votesUnwatch = null, votesResetAsk = false;
+try { const v = JSON.parse(localStorage.getItem("pk-my-votes")); if (v){ myPicks = v.picks || []; voted = !!v.sent; } } catch(e){}
+const saveMyVotes = () => { try { localStorage.setItem("pk-my-votes", JSON.stringify({ picks: myPicks, sent: voted })); } catch(e){} };
+function toggleVote(pick){
+  if (voted) return;
+  if (myPicks.includes(pick)) myPicks = myPicks.filter(p => p !== pick);
+  else {
+    const side = pick.split("|")[0];
+    if (myPicks.filter(p => p.startsWith(side + "|")).length >= VOTE_MAX) return toast(`You can pick up to ${VOTE_MAX} songs per side.`);
+    myPicks.push(pick);
+  }
+  saveMyVotes(); renderTracksPublic();
+}
+async function sendVotes(){
+  if (!myPicks.length || voted) return;
+  const b = $("#sendVotes"); if (b){ b.disabled = true; b.textContent = "Sending…"; }
+  try { await Store.addVote(myPicks.slice(0, VOTE_MAX * 2)); voted = true; saveMyVotes(); renderTracksPublic(); toast("Thanks for voting!"); }
+  catch(e){ if (b){ b.disabled = false; b.textContent = `Send my votes (${myPicks.length})`; } toast("Your votes didn't send. Try again."); }
+}
+function renderVotesAdmin(){
+  const tally = {};
+  votes.forEach(v => (v.picks || []).forEach(p => tally[p] = (tally[p] || 0) + 1));
+  $("#votesHead").textContent = `Song votes · ${votes.length} ${votes.length === 1 ? "person" : "people"}`;
+  $("#votesAdmin").innerHTML = SIDES_TL.map(sd => {
+    const rows = Object.entries(tally).filter(([p]) => p.startsWith(sd.key + "|")).sort((a, b) => b[1] - a[1]);
+    const top = rows.length ? rows[0][1] : 1;
+    return `<div class="label" style="margin:6px 0">${sd.title}</div>` + (rows.length
+      ? `<div class="votes-list">${rows.map(([p, n]) => `<div><span>${esc(p.split("|").slice(1).join("|"))}<i style="width:${(n / top * 100).toFixed(0)}%"></i></span><b>${n}</b></div>`).join("")}</div>`
+      : `<p class="mode-note">No votes yet.</p>`);
+  }).join("");
+  $("#votesReset").innerHTML = !votes.length ? "" : votesResetAsk
+    ? `<span class="confirm">Delete all votes? <button class="btn" type="button" data-votes-reset-yes style="padding:6px 10px">Yes, reset</button><button class="linkish" type="button" data-votes-reset-no>Cancel</button></span>`
+    : `<button class="linkish" type="button" data-votes-reset>Reset votes</button>`;
+}
+
+/* ---------- Guestbook ---------- */
+let gbPublic = [], gbAll = [], gbUnwatch = null, gbAdminUnwatch = null;
+const gbDate = ms => new Date(ms).toLocaleDateString([], { month:"short", day:"numeric" });
+function renderGuestbook(){
+  const list = [...gbPublic].sort((a, b) => b.createdAt - a.createdAt);
+  $("#gbList").innerHTML = list.length
+    ? list.map(m => `<article class="gb-msg"><p>${esc(m.message)}</p><footer><b>${esc(m.name)}</b><span>${gbDate(m.createdAt)}</span></footer></article>`).join("")
+    : `<p class="mode-note">No messages yet. Be the first!</p>`;
+}
+function renderGuestbookAdmin(){
+  const pending = gbAll.filter(m => !m.approved).sort((a, b) => b.createdAt - a.createdAt), shown = gbAll.filter(m => m.approved).sort((a, b) => b.createdAt - a.createdAt);
+  $("#gbAdminHead").textContent = `Guestbook · ${pending.length} waiting`;
+  const card = (m, acts) => `<article class="gb-msg"><p>${esc(m.message)}</p><footer><b>${esc(m.name)}</b><span>${gbDate(m.createdAt)}</span><span class="acts">${acts}</span></footer></article>`;
+  $("#gbAdmin").innerHTML =
+    (pending.length ? `<div class="label">Waiting for you</div>` + pending.map(m => card(m, `<button class="linkish" type="button" data-gb="approve" data-gbid="${esc(m.id)}">Approve</button><button class="linkish" type="button" data-gb="delete" data-gbid="${esc(m.id)}">Delete</button>`)).join("") : `<p class="mode-note">No new messages.</p>`) +
+    (shown.length ? `<div class="label" style="margin-top:8px">On the guestbook</div>` + shown.map(m => card(m, `<button class="linkish" type="button" data-gb="hide" data-gbid="${esc(m.id)}">Hide</button><button class="linkish" type="button" data-gb="delete" data-gbid="${esc(m.id)}">Delete</button>`)).join("") : "");
+}
+$("#gbMsg").addEventListener("input", () => { $("#gbCount").textContent = `${$("#gbMsg").value.length} / 280`; });
+$("#gbForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = $("#gbName").value.trim().replace(/\s+/g, " "), msg = $("#gbMsg").value.trim(), err = $("#gbErr");
+  if (!name){ err.textContent = "Add your name so Finn knows who it's from."; err.hidden = false; return; }
+  if (!msg){ err.textContent = "Write a message first."; err.hidden = false; return; }
+  let last = 0; try { last = +localStorage.getItem("pk-gb-last") || 0; } catch(x){}
+  if (Date.now() - last < 60000){ err.textContent = "You just sent one. Wait a minute before sending another."; err.hidden = false; return; }
+  err.hidden = true;
+  const b = $("#gbSend"); b.disabled = true; b.textContent = "Sending…";
+  try {
+    await Store.addMessage(name.slice(0, 40), msg.slice(0, 280));
+    try { localStorage.setItem("pk-gb-last", String(Date.now())); } catch(x){}
+    $("#gbMsg").value = ""; $("#gbCount").textContent = "0 / 280";
+    $("#gbNote").textContent = "Sent! Finn will read it, and then it shows up here.";
+  } catch(x){ err.textContent = "Your message didn't send. Try again in a moment."; err.hidden = false; }
+  b.disabled = false; b.textContent = "Send to Finn";
 });
 
 /* ---------- Vintage Tour memories ---------- */
@@ -1265,6 +1573,22 @@ document.addEventListener("click", async e => {
     return;
   }
   if (e.target.closest("[data-memories]")){ soundOn = true; song.play().then(() => { if (current.view !== "vintage") song.pause(); }).catch(() => {}); }
+  const vt = e.target.closest("[data-vote]");
+  if (vt) return toggleVote(vt.dataset.vote);
+  if (e.target.closest("#sendVotes")) return sendVotes();
+  if (e.target.closest("[data-votes-reset]")){ votesResetAsk = true; return renderVotesAdmin(); }
+  if (e.target.closest("[data-votes-reset-no]")){ votesResetAsk = false; return renderVotesAdmin(); }
+  if (e.target.closest("[data-votes-reset-yes]")){
+    try { await Store.resetVotes(votes.map(v => v.id)); votesResetAsk = false; toast("Votes reset"); } catch(x){ toast("Couldn't reset votes. Try again."); }
+    return;
+  }
+  const gbb = e.target.closest("[data-gb]");
+  if (gbb){
+    gbb.disabled = true;
+    try { await Store.moderate(gbb.dataset.gbid, gbb.dataset.gb); toast(gbb.dataset.gb === "approve" ? "Message is on the guestbook" : gbb.dataset.gb === "hide" ? "Message hidden" : "Message deleted"); }
+    catch(x){ gbb.disabled = false; toast("That didn't go through. Try again."); }
+    return;
+  }
   const ta = e.target.closest("[data-test-ask]");
   if (ta){ testConfirm = ta.dataset.testAsk; return renderAdmin(); }
   if (e.target.closest("[data-test-cancel]")){ testConfirm = null; return renderAdmin(); }
@@ -1353,7 +1677,7 @@ async function route(){
   if (isAdmin) adminKey = adminTry;
   const isShow = h.startsWith("show-");
   const wasVintage = current.view === "vintage";
-  current.view = isAdmin ? "admin" : isShow ? "event" : h === "vintage" ? "vintage" : h === "tracklist" ? "tracks" : "home";
+  current.view = isAdmin ? "admin" : isShow ? "event" : h === "vintage" ? "vintage" : h === "tracklist" ? "tracks" : h === "guestbook" ? "guestbook" : "home";
   if (wasVintage && current.view !== "vintage") closeMemories();
   $("#view-home").hidden = current.view !== "home";
   $("#home-body").hidden = current.view !== "home";
@@ -1362,6 +1686,8 @@ async function route(){
   $("#view-admin").hidden = current.view !== "admin";
   $("#view-vintage").hidden = current.view !== "vintage";
   $("#view-tracks").hidden = current.view !== "tracks";
+  $("#view-guestbook").hidden = current.view !== "guestbook";
+  if (current.view === "guestbook"){ if (!gbUnwatch) gbUnwatch = Store.watchGuestbook(l => { gbPublic = l; renderGuestbook(); }, false); renderGuestbook(); }
   if (current.view === "tracks"){ watchTracksOnce(); renderTracksPublic(); }
   if (current.view === "vintage") openMemories();
   if (current.view !== "event" && current.unwatch){ current.unwatch(); current.unwatch = null; }
@@ -1398,11 +1724,19 @@ async function syncMine(){
   setSide(override || clockSide());
   renderEvents(); renderMine();
   try { await initFirebase(); } catch(e){ console.warn("Firebase didn't load; using demo mode.", e); fb = null; }
-  // live "seats open" count on the show list
+  // live "seats open" count on the show list (and a heads-up when a sold-out show gets a free seat)
+  const wasFull = {};
+  watchTracksOnce();
+  Store.watchLive(v => { live = v; renderNowPlaying(); });
   SHOWS.filter(s => !s.ended).forEach(show => Store.watchTaken(show.id, taken => {
     const el = $("#left-" + show.id);
-    const full = taken.size >= SEATS.length;
-    if (el) el.textContent = full ? "Sold out" : `${SEATS.length - taken.size} of ${SEATS.length} seats open`;
+    const full = taken.size >= SEATS.length, open = SEATS.length - taken.size;
+    if (el){
+      el.textContent = full ? "Sold out" : open <= 3 ? `Only ${open} seat${open === 1 ? "" : "s"} left!` : `${open} of ${SEATS.length} seats open`;
+      el.className = "tag" + (!full && open <= 3 ? " hot" : "");
+    }
+    if (wasFull[show.id] === true && !full) toast(`A seat just opened up for ${show.name}! Tap Find tickets to grab it.`);
+    wasFull[show.id] = full;
     const go = $("#go-" + show.id);
     if (go) go.innerHTML = full ? `<a class="btn" href="#tracklist">Tickets sold out · See tracklist</a>` : `<a class="btn" href="#show-${show.id}">Find tickets</a>`;
   }));

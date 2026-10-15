@@ -82,9 +82,40 @@ service cloud.firestore {
     match /tracklist/{show} {
       allow read: if true;
       allow write: if adminActing()
-                   && request.resource.data.keys().hasOnly(["pretty", "killer", "updatedAt"])
+                   && request.resource.data.keys().hasOnly(["pretty", "killer", "prettyLen", "killerLen", "updatedAt"])
                    && request.resource.data.pretty is list && request.resource.data.pretty.size() <= 30
                    && request.resource.data.killer is list && request.resource.data.killer.size() <= 30;
+    }
+
+    // live/{show}: "now playing" (which side, which song it started from, when).
+    match /live/{show} {
+      allow read: if true;
+      allow write: if adminActing()
+                   && request.resource.data.keys().hasOnly(["side", "startIndex", "startedAt", "on"]);
+    }
+
+    // guestbook/{id}: anyone can leave a message; it only shows on the site
+    // after the admin approves it. Only the admin can approve, hide or delete.
+    match /guestbook/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(["name", "message", "approved", "createdAt"])
+                    && request.resource.data.approved == false
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
+                    && request.resource.data.message is string && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 280;
+      allow update: if adminActing() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["approved"]);
+      allow delete: if adminActing();
+    }
+
+    // votes/{id}: one list of favorite songs per vote. Can't be changed; only
+    // the admin can delete (reset) votes.
+    match /votes/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(["picks", "createdAt"])
+                    && request.resource.data.picks is list
+                    && request.resource.data.picks.size() > 0 && request.resource.data.picks.size() <= 6
+                    && request.resource.data.createdAt == request.time;
+      allow delete: if adminActing();
     }
 
     // tickets/{show}__{seat}: the ticket with the person's name.
