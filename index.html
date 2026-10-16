@@ -506,6 +506,14 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
           <a class="btn ghost" href="media/pretty-killer/qr-confirmed.png" download="ticket-confirmed-qr.png" style="align-self:flex-start">Download QR code</a>
         </section>
         <section class="acard">
+          <h3>Intro songs</h3>
+          <p class="mode-note">Only on this admin page. Play the right one before each show starts.</p>
+          <div class="label">Pretty intro</div>
+          <audio class="intro-song" src="media/pretty-killer/intro-songs/pretty-intro.mp3" controls preload="none" style="width:100%"></audio>
+          <div class="label">Killer intro</div>
+          <audio class="intro-song" src="media/pretty-killer/intro-songs/killer-intro.mp3" controls preload="none" style="width:100%"></audio>
+        </section>
+        <section class="acard">
           <h3>Now playing</h3>
           <p class="mode-note" id="npStatus">Not playing.</p>
           <div class="np-ctrl">
@@ -1872,6 +1880,7 @@ async function route(){
   $("#view-vintage").hidden = current.view !== "vintage";
   $("#view-tracks").hidden = current.view !== "tracks";
   if (current.view !== "tracks") $("#pkMovie").pause();
+  if (current.view !== "admin") document.querySelectorAll(".intro-song").forEach(a => a.pause());
   $("#view-guestbook").hidden = current.view !== "guestbook";
   if (current.view === "guestbook"){ if (!gbUnwatch) gbUnwatch = Store.watchGuestbook(l => { gbPublic = l; renderGuestbook(); }, false); renderGuestbook(); }
   if (current.view === "tracks"){ watchTracksOnce(); renderTracksPublic(); }
