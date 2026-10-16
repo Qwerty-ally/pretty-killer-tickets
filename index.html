@@ -377,7 +377,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
     <h2 class="sec">Shows</h2>
     <div class="events" id="events"></div>
     <a class="cta-card" href="#guestbook">
-      <div><b>Guestbook</b><br><span id="gbCardText">Opens 50 minutes after the Pretty show starts.</span></div>
+      <div><b>Guestbook</b><br><span id="gbCardText">Opens 50 minutes after the Pretty or Killer show starts, for 5 hours.</span></div>
       <span class="btn" id="gbCardBtn">See the guestbook ▶</span>
     </a>
 
@@ -441,13 +441,13 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
       <div>
         <div class="label">Finn Shapiro · Pretty Killer Tour</div>
         <h1>Guestbook</h1>
-        <p>Leave a message for Finn. It opens 50 minutes after the Pretty show starts, and Finn reads every message before it shows up here.</p>
+        <p>Leave a message for Finn. It opens 50 minutes after the Pretty show and the Killer show start and stays open for 5 hours each time, and Finn reads every message before it shows up here.</p>
       </div>
     </div>
     <div class="gb-wrap">
       <div class="gb-form" id="gbLocked" hidden>
         <b style="font:900 22px/1.1 var(--display)">Not open yet</b>
-        <p class="mode-note" id="gbLockedText" style="font-size:15px">The guestbook opens 50 minutes after the Pretty show starts.</p>
+        <p class="mode-note" id="gbLockedText" style="font-size:15px">The guestbook opens 50 minutes after the Pretty or Killer show starts, for 5 hours.</p>
       </div>
       <form class="gb-form" id="gbForm" novalidate>
         <div class="field"><label class="label" for="gbName">Your name</label><input id="gbName" type="text" maxlength="40" autocomplete="name"></div>
@@ -631,7 +631,7 @@ const CONFIG = {
   // Only the SHA-256 of the secret is stored here and in firestore.rules, so
   // reading this code doesn't reveal the link. The secret also lets the admin
   // page move people and release seats.
-  adminHash: "c5659178d559cb6a6d9c16dee29e0ae3adc17de94c52925ead21f199415ed7ba"
+  adminHash: "b94f675eab699669d787a6cdf820110e58794c99b230a9da6b32363ed9268f03"
 };
 
 /* =====================================================================
@@ -804,18 +804,22 @@ const Store = {
     const q = everything ? fb.db.collection("guestbook") : fb.db.collection("guestbook").where("approved", "==", true);
     return q.onSnapshot(snap => cb(snap.docs.map(d => { const m = d.data({ serverTimestamps: "estimate" }); return { id: d.id, ...m, createdAt: m.createdAt && m.createdAt.toMillis ? m.createdAt.toMillis() : Date.now() }; })), () => cb([]));
   },
-  // ---- when the Pretty show started (the guestbook opens 50 minutes later)
+  // ---- when the Pretty and Killer shows started (the guestbook opens 50 minutes after each, for 5 hours)
   watchShowtimes(cb){
-    if (!fb){ const f = () => { try { cb(JSON.parse(localStorage.getItem("pk-showtimes")) || {}); } catch(e){ cb({}); } }; return Demo.watch(f); }
+    if (!fb){ const f = () => { let v = {}; try { v = JSON.parse(localStorage.getItem("pk-showtimes")) || {}; } catch(e){} cb({ pretty: v.prettyStart || null, killer: v.killerStart || null }); }; return Demo.watch(f); }
+    const ms = t => t && t.toMillis ? t.toMillis() : null;
     return fb.db.collection("showtimes").doc("prettykiller").onSnapshot(d => {
       const v = d.exists ? d.data({ serverTimestamps: "estimate" }) : {};
-      cb({ prettyStart: v.prettyStart && v.prettyStart.toMillis ? v.prettyStart.toMillis() : null });
-    }, () => cb({}));
+      cb({ pretty: ms(v.prettyStart), killer: ms(v.killerStart) });
+    }, () => cb({ pretty: null, killer: null }));
   },
-  async setPrettyStart(on){
-    if (!fb){ try { on ? localStorage.setItem("pk-showtimes", JSON.stringify({ prettyStart: Date.now() })) : localStorage.removeItem("pk-showtimes"); } catch(e){} Demo.notify(); return; }
-    const ref = fb.db.collection("showtimes").doc("prettykiller");
-    await this.adminWrite(b => on ? b.set(ref, { prettyStart: firebase.firestore.FieldValue.serverTimestamp() }) : b.delete(ref));
+  async setShowStart(side, on){
+    const field = side + "Start";
+    if (!fb){ let v = {}; try { v = JSON.parse(localStorage.getItem("pk-showtimes")) || {}; } catch(e){}
+      if (on) v[field] = Date.now(); else delete v[field];
+      try { localStorage.setItem("pk-showtimes", JSON.stringify(v)); } catch(e){} Demo.notify(); return; }
+    const ref = fb.db.collection("showtimes").doc("prettykiller"), FV = firebase.firestore.FieldValue;
+    await this.adminWrite(b => b.set(ref, { [field]: on ? FV.serverTimestamp() : FV.delete() }, { merge: true }));
   },
   async addMessage(name, message){
     if (!fb){ let l = []; try { l = JSON.parse(localStorage.getItem("pk-guestbook")) || []; } catch(e){} l.push({ id: makeKey(), name, message, approved: false, createdAt: Date.now() }); try { localStorage.setItem("pk-guestbook", JSON.stringify(l)); } catch(e){} Demo.notify(); return; }
@@ -1436,7 +1440,8 @@ function sendLive(v){
 }
 async function playIndex(side, i, pos = 0){
   if (eng.busy) return; eng.busy = true;
-  if (side === "pretty" && !prettyStart) Store.setPrettyStart(true).catch(() => {});
+  // the first Play on a side sets that show's start time (or replaces one left over from an earlier day)
+  if (!showStarts[side] || Date.now() - showStarts[side] > 12 * 60 * 60 * 1000) Store.setShowStart(side, true).catch(() => {});
   try {
     const path = songFile(side, i), ok = await hasFile(path);
     eng = { side, index: i, audio: ok, busy: true };
@@ -1543,31 +1548,36 @@ function renderVotesAdmin(){
 /* ---------- Guestbook ---------- */
 let gbPublic = [], gbAll = [], gbUnwatch = null, gbAdminUnwatch = null;
 const gbDate = ms => new Date(ms).toLocaleDateString([], { month:"short", day:"numeric" });
-const GB_DELAY = 50 * 60 * 1000;
-let prettyStart = null, gbStartAsk = false;
-const gbOpensAt = () => prettyStart ? prettyStart + GB_DELAY : null;
-const gbIsOpen = () => !!prettyStart && Date.now() >= gbOpensAt();
+// The guestbook opens 50 minutes after each show (Pretty and Killer) starts and stays open for 5 hours.
+const GB_DELAY = 50 * 60 * 1000, GB_OPEN_FOR = 5 * 60 * 60 * 1000;
+const GB_SIDES = [{ key:"pretty", name:"Pretty" }, { key:"killer", name:"Killer" }];
+let showStarts = { pretty: null, killer: null }, gbStartAsk = null;
+const gbWindows = () => GB_SIDES.filter(s => showStarts[s.key]).map(s => ({ ...s, from: showStarts[s.key] + GB_DELAY, to: showStarts[s.key] + GB_DELAY + GB_OPEN_FOR }));
+const gbOpenWin = () => gbWindows().find(w => Date.now() >= w.from && Date.now() < w.to);
+const gbNextWin = () => gbWindows().filter(w => Date.now() < w.from).sort((a, b) => a.from - b.from)[0];
+const gbIsOpen = () => !!gbOpenWin();
 const clock = ms => new Date(ms).toLocaleTimeString([], { hour:"numeric", minute:"2-digit" });
 function gbWaitText(){
-  if (!prettyStart) return "The guestbook opens 50 minutes after the Pretty show starts.";
-  const mins = Math.max(1, Math.ceil((gbOpensAt() - Date.now()) / 60000));
-  return `The guestbook opens at ${clock(gbOpensAt())}, in ${mins} minute${mins === 1 ? "" : "s"}.`;
+  const n = gbNextWin();
+  if (!n) return "The guestbook opens 50 minutes after the Pretty or Killer show starts, for 5 hours.";
+  const mins = Math.max(1, Math.ceil((n.from - Date.now()) / 60000));
+  return `The guestbook opens at ${clock(n.from)}, in ${mins} minute${mins === 1 ? "" : "s"}.`;
 }
 function renderGbGate(){
-  const open = gbIsOpen();
-  $("#gbCardText").textContent = open ? "Leave a message for Finn." : gbWaitText().replace("The guestbook opens", "Opens");
+  const w = gbOpenWin(), open = !!w;
+  $("#gbCardText").textContent = open ? `Leave a message for Finn. Open until ${clock(w.to)}.` : gbWaitText().replace("The guestbook opens", "Opens");
   $("#gbCardBtn").textContent = open ? "Sign the guestbook ▶" : "See the guestbook ▶";
   $("#gbForm").hidden = !open; $("#gbLocked").hidden = open;
   $("#gbLockedText").textContent = gbWaitText();
   const t = $("#gbOpenText");
   if (t){
-    t.textContent = !prettyStart ? "The guestbook opens 50 minutes after the Pretty show starts. That's set automatically the first time you press Play on the Pretty side."
-      : open ? `The Pretty show started at ${clock(prettyStart)}, so the guestbook has been open since ${clock(gbOpensAt())}.`
-      : `The Pretty show started at ${clock(prettyStart)}. ${gbWaitText()}`;
-    $("#gbOpenBtns").innerHTML = !prettyStart
-      ? `<button class="btn ghost" type="button" data-gbstart="now">Pretty show started now</button>`
-      : gbStartAsk ? `<span class="confirm">Reset the start time? The guestbook closes until the Pretty show starts again. <button class="btn" type="button" data-gbstart="clear" style="padding:6px 10px">Yes, reset</button><button class="linkish" type="button" data-gbstart="no">Cancel</button></span>`
-      : `<button class="linkish" type="button" data-gbstart="ask">Reset start time</button>`;
+    const now = Date.now();
+    t.textContent = "The guestbook opens 50 minutes after each show starts and closes 5 hours later. A show's start is set automatically the first time you press Play on that side. "
+      + gbWindows().map(x => `${x.name} show started at ${clock(showStarts[x.key])}: guestbook ${now < x.from ? `opens at ${clock(x.from)}` : now < x.to ? `open until ${clock(x.to)}` : `was open ${clock(x.from)}–${clock(x.to)}`}.`).join(" ");
+    $("#gbOpenBtns").innerHTML = GB_SIDES.map(s => !showStarts[s.key]
+      ? `<button class="btn ghost" type="button" data-gbstart="now" data-gbside="${s.key}">${s.name} show started now</button>`
+      : gbStartAsk === s.key ? `<span class="confirm">Reset the ${s.name} start time? <button class="btn" type="button" data-gbstart="clear" data-gbside="${s.key}" style="padding:6px 10px">Yes, reset</button><button class="linkish" type="button" data-gbstart="no">Cancel</button></span>`
+      : `<button class="linkish" type="button" data-gbstart="ask" data-gbside="${s.key}">Reset ${s.name} start time</button>`).join("");
   }
 }
 function renderGuestbook(){
@@ -1724,10 +1734,10 @@ document.addEventListener("click", async e => {
   }
   const gbs = e.target.closest("[data-gbstart]");
   if (gbs){
-    const a = gbs.dataset.gbstart;
-    if (a === "ask"){ gbStartAsk = true; return renderGbGate(); }
-    if (a === "no"){ gbStartAsk = false; return renderGbGate(); }
-    try { await Store.setPrettyStart(a === "now"); gbStartAsk = false; toast(a === "now" ? "Pretty show start time set. The guestbook opens in 50 minutes." : "Start time reset. The guestbook is closed."); }
+    const a = gbs.dataset.gbstart, side = gbs.dataset.gbside, name = side === "killer" ? "Killer" : "Pretty";
+    if (a === "ask"){ gbStartAsk = side; return renderGbGate(); }
+    if (a === "no"){ gbStartAsk = null; return renderGbGate(); }
+    try { await Store.setShowStart(side, a === "now"); gbStartAsk = null; toast(a === "now" ? `${name} show start time set. The guestbook opens in 50 minutes.` : `${name} start time reset.`); }
     catch(x){ toast("That didn't go through. Try again."); }
     return;
   }
@@ -1878,7 +1888,7 @@ async function syncMine(){
   const wasFull = {};
   watchTracksOnce();
   Store.watchLive(v => { live = v; renderNowPlaying(); });
-  Store.watchShowtimes(v => { prettyStart = v.prettyStart || null; renderGbGate(); });
+  Store.watchShowtimes(v => { showStarts = { pretty: v.pretty || null, killer: v.killer || null }; renderGbGate(); });
   SHOWS.filter(s => !s.ended).forEach(show => Store.watchTaken(show.id, taken => {
     const el = $("#left-" + show.id);
     const full = taken.size >= SEATS.length, open = SEATS.length - taken.size;

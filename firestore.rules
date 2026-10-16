@@ -30,7 +30,7 @@ service cloud.firestore {
     // page writes the secret into adminTokens/now (which nobody can read) in
     // the same request as the seat changes, and each change checks that token.
     function isAdminKey(key) {
-      return keyMatches(key, "c5659178d559cb6a6d9c16dee29e0ae3adc17de94c52925ead21f199415ed7ba");
+      return keyMatches(key, "b94f675eab699669d787a6cdf820110e58794c99b230a9da6b32363ed9268f03");
     }
     function adminActing() {
       return getAfter(/databases/$(database)/documents/adminTokens/now).data.at == request.time
@@ -94,21 +94,32 @@ service cloud.firestore {
                    && request.resource.data.keys().hasOnly(["side", "index", "pos", "startedAt", "on", "playing", "dur"]);
     }
 
-    // showtimes/{show}: when the Pretty show started (set by the admin page).
+    // showtimes/{show}: when the Pretty and Killer shows started (set by the admin page).
     match /showtimes/{show} {
       allow read: if true;
-      allow create, update: if adminActing() && request.resource.data.keys().hasOnly(["prettyStart"]);
+      allow create, update: if adminActing() && request.resource.data.keys().hasOnly(["prettyStart", "killerStart"]);
       allow delete: if adminActing();
     }
 
-    // guestbook/{id}: anyone can leave a message, starting 50 minutes after the
-    // Pretty show starts; it only shows on the site
-    // after the admin approves it. Only the admin can approve, hide or delete.
+    // The guestbook is open from 50 minutes after a show starts until 5 hours after that.
+    function gbOpenAfter(start) {
+      return start is timestamp
+          && request.time >= start + duration.value(50, "m")
+          && request.time < start + duration.value(350, "m");
+    }
+    function gbOpen() {
+      let st = get(/databases/$(database)/documents/showtimes/prettykiller).data;
+      return gbOpenAfter(st.get("prettyStart", null)) || gbOpenAfter(st.get("killerStart", null));
+    }
+
+    // guestbook/{id}: anyone can leave a message while the guestbook is open
+    // (50 minutes after the Pretty or Killer show starts, for 5 hours); it only
+    // shows on the site after the admin approves it. Only the admin can approve, hide or delete.
     match /guestbook/{id} {
       allow read: if true;
       allow create: if request.resource.data.keys().hasOnly(["name", "message", "approved", "createdAt"])
                     && exists(/databases/$(database)/documents/showtimes/prettykiller)
-                    && request.time >= get(/databases/$(database)/documents/showtimes/prettykiller).data.prettyStart + duration.value(50, "m")
+                    && gbOpen()
                     && request.resource.data.approved == false
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
