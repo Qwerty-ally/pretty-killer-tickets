@@ -246,6 +246,9 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .att-select.part{border-color:var(--accent);color:var(--accent)}
 
 /* tracklist */
+.pk-movie{margin:0 0 24px;background:#0b0a0c;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.pk-movie video{display:block;width:100%;max-height:70vh;background:#000}
+.pk-movie figcaption{padding:10px 14px;font:600 12px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:#ff3fae}
 .tracks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;padding-bottom:56px}
 .tl{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
 .tl h3{margin:0 0 2px;font:900 24px/1.1 var(--display)}
@@ -423,6 +426,10 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
         <p>The songs for the Pretty side (morning show) and the Killer side (night show).</p>
       </div>
     </div>
+    <figure class="pk-movie">
+      <video id="pkMovie" src="media/pretty-killer/movie.mp4" controls playsinline preload="metadata"></video>
+      <figcaption>Official Pretty Killer Movie</figcaption>
+    </figure>
     <div class="tracks" id="tracksPublic"></div>
     <div class="vote-bar" id="voteBar"></div>
   </section>
@@ -1828,6 +1835,7 @@ async function route(){
   $("#view-admin").hidden = current.view !== "admin";
   $("#view-vintage").hidden = current.view !== "vintage";
   $("#view-tracks").hidden = current.view !== "tracks";
+  if (current.view !== "tracks") $("#pkMovie").pause();
   $("#view-guestbook").hidden = current.view !== "guestbook";
   if (current.view === "guestbook"){ if (!gbUnwatch) gbUnwatch = Store.watchGuestbook(l => { gbPublic = l; renderGuestbook(); }, false); renderGuestbook(); }
   if (current.view === "tracks"){ watchTracksOnce(); renderTracksPublic(); }
