@@ -1322,8 +1322,8 @@ function renderTracksPublic(){
   $("#tracksPublic").innerHTML = SIDES_TL.map(sd => `
     <section class="tl ${sd.key}">
       <h3>${sd.title}</h3><span class="label">${sd.sub}</span>
-      <ol>${tracks[sd.key].map((name, i) => { const n = name.trim(), on = np && np.side === sd.key && np.index === i, pick = `${sd.key}|${n}`;
-        return `<li class="${on ? "now" : ""}"><span>${String(i + 1).padStart(2, "0")}</span><div class="nm">${n ? esc(n) : `<em class="tba">To be announced</em>`}</div>${n ? `<button class="vote" type="button" data-vote="${esc(pick)}" aria-pressed="${myPicks.includes(pick)}" ${voted ? "disabled" : ""} aria-label="Vote for ${esc(n)}">${myPicks.includes(pick) ? "♥" : "♡"}</button>` : "<i></i>"}</li>`; }).join("")}</ol>
+      <ol>${tracks[sd.key].map((name, i) => { const n = name.trim(), pick = `${sd.key}|${n}`;
+        return `<li><span>${String(i + 1).padStart(2, "0")}</span><div class="nm">${n ? esc(n) : `<em class="tba">To be announced</em>`}</div>${n ? `<button class="vote" type="button" data-vote="${esc(pick)}" aria-pressed="${myPicks.includes(pick)}" ${voted ? "disabled" : ""} aria-label="Vote for ${esc(n)}">${myPicks.includes(pick) ? "♥" : "♡"}</button>` : "<i></i>"}</li>`; }).join("")}</ol>
     </section>`).join("");
   $("#tracklistHead").textContent = anySong ? "Tracklist" : "Tracklist · songs coming soon";
   const vb = $("#voteBar");
@@ -1399,7 +1399,7 @@ $("#saveTracks").addEventListener("click", async () => {
 /* ---------- Now playing ----------
    Each song can have its own audio file: media/pretty-killer/songs/<song-name>.mp3
    (song name in lowercase with dashes, e.g. anne.mp3), used on whichever side the song is. The admin page plays the songs one
-   right after another; guests' "Now playing" bar follows. Songs without a file run on a 3:30 timer.
+   right after another. The "Now playing" bar shows only on the admin page. Songs without a file run on a 3:30 timer.
    Each side starts with its intro song (index -1, shown as "0."). */
 const DEFAULT_LEN = 210;
 const slug = n => String(n).toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -1424,16 +1424,13 @@ function computeNowPlaying(){
   return { side: live.side, ended: true };
 }
 function renderNowPlaying(){
-  const prev = np && !np.ended ? `${np.side}:${np.index}` : "";
   np = computeNowPlaying();
   const el = $("#nowPlaying"), side = np && (np.side === "pretty" ? "Pretty side" : "Killer side");
-  if (!np || np.ended){ el.hidden = true; }
+  if (!np || np.ended || current.view !== "admin"){ el.hidden = true; }   // the bar only shows on the admin page
   else {
     el.hidden = false;
     el.innerHTML = `<span class="dot" aria-hidden="true" ${np.paused ? 'style="animation:none;opacity:.4"' : ""}></span><span>${np.paused ? "Paused" : "Now playing"} · ${side}: <b>${esc(np.name)}</b></span><span class="bar" aria-hidden="true"><i style="width:${Math.min(100, np.frac * 100).toFixed(1)}%"></i></span><small>${fmtT(np.left) || "0:00"} left${np.next ? ` · Next: ${esc(np.next)}` : " · Last song"}</small>`;
   }
-  const now = np && !np.ended ? `${np.side}:${np.index}` : "";
-  if (now !== prev && current.view === "tracks") renderTracksPublic();
   const st = $("#npStatus");
   if (st) st.textContent = !live || !live.on ? "Not playing." : np && np.ended ? "The set is over." : np ? `${np.paused ? "Paused" : "Playing"} · ${side}: ${np.name} · ${fmtT(np.left)} left${np.next ? ` · Next: ${np.next}` : " · Last song"}` : "Add songs to the tracklist first.";
   $("#npPlay").textContent = live && live.on && live.playing ? "Pause" : "Play";
@@ -1507,7 +1504,7 @@ function updateAudioUI(){
   if (a && document.activeElement !== seek) seek.value = Math.floor(au.currentTime);
   $("#npTime").textContent = a ? `${fmtT(au.currentTime)} / ${fmtT(au.duration)}` : on ? "Timer song (no audio file)" : "Stopped";
   const withAudio = SIDES_TL.reduce((n, sd) => n + namedSlots(sd.key).filter(i => fileOK[songFile(sd.key, i)]).length, 0);
-  $("#npHelp").innerHTML = `Press <b>Play</b> once and the songs play <b>one right after another</b>, and guests' "Now playing" follows. Keep this page open during the show. ${withAudio ? `${withAudio} song${withAudio === 1 ? " has" : "s have"} audio (♪); the others run on a 3:30 timer.` : `No songs have audio files yet, so each song runs on a 3:30 timer. Send each song's audio file to Claude to add it.`}`;
+  $("#npHelp").innerHTML = `Press <b>Play</b> once and the songs play <b>one right after another</b>. Guests don't see "Now playing", only you do. Keep this page open during the show. ${withAudio ? `${withAudio} song${withAudio === 1 ? " has" : "s have"} audio (♪); the others run on a 3:30 timer.` : `No songs have audio files yet, so each song runs on a 3:30 timer. Send each song's audio file to Claude to add it.`}`;
 }
 $("#npSide").addEventListener("change", renderNpFrom);
 $("#npPlay").addEventListener("click", async () => {
