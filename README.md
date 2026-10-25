@@ -12,8 +12,6 @@ Free ticket site for Finn Shapiro's shows at 15 Freeman Parkway, in the same Pre
 
 ## Show day and extras
 
-- **Intro video pop-up:** every time someone opens the site, a big pop-up (with a little × to close) says **Watch the Pretty intro video** in the morning (AM) or **Watch the Killer intro video** at night (PM) and shows that video (`media/pretty-killer/intro-pretty.mp4` / `intro-killer.mp4`). It doesn't show on the admin page.
-
 - **Seat opened alert:** when a sold-out show gets a free seat, the button switches back to **Find tickets**, the card says how few are left, and anyone with the site open gets a heads-up.
 - **Intro songs:** the admin page has an **Intro songs** card with the Pretty intro and the Killer intro (`media/pretty-killer/intro-songs/`). They aren't shown anywhere else on the site.
 - **Door QR code:** on the admin page (with a download). It opens `confirmed.html`, which is just the Ticket Confirmed picture on black.

@@ -232,14 +232,6 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .memo-bar{position:sticky;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;gap:10px;justify-content:center;margin-block:18px 56px;z-index:5}
 .memo-bar .btn{min-width:150px;box-shadow:var(--shadow)}
 .video-modal{width:min(920px,calc(100% - 32px))}
-/* intro video pop-up (shows when the site opens) */
-.intro{position:fixed;inset:0;z-index:70;background:rgba(20,8,16,.78);display:grid;place-items:center;padding:16px}
-.intro[hidden]{display:none}
-.intro-box{width:min(1100px,100%);max-height:100%;overflow:auto;background:var(--surface);color:var(--ink);border-radius:var(--radius);padding:20px;box-shadow:0 30px 60px -20px rgba(0,0,0,.6)}
-.intro-box header{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:14px}
-.intro-box h2{margin:0;font:900 clamp(28px,5vw,52px)/1.05 var(--display);color:var(--accent)}
-[data-side="killer"] .intro-box h2{font-weight:400;text-transform:uppercase}
-.intro-box video{display:block;width:100%;max-height:72vh;background:#000;border-radius:var(--radius)}
 .vids{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
 .vids figure{margin:0;display:flex;flex-direction:column;gap:6px}
 .vids video{width:100%;max-height:60vh;background:#000;border-radius:var(--radius);display:block}
@@ -624,14 +616,6 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
   <header><h2 id="vTitle">Behind the Scenes</h2><button class="x" type="button" data-vclose aria-label="Close">×</button></header>
   <div class="vids" id="vids"></div>
 </section>
-
-<!-- intro video pop-up: Pretty intro in the morning, Killer intro at night -->
-<div class="intro" id="intro" hidden>
-  <section class="intro-box" role="dialog" aria-modal="true" aria-labelledby="introTitle">
-    <header><h2 id="introTitle">Watch the intro video</h2><button class="x" type="button" data-introclose aria-label="Close">×</button></header>
-    <video id="introVid" controls playsinline preload="metadata"></video>
-  </section>
-</div>
 
 <div class="toast" id="toast" hidden></div>
 
@@ -1710,16 +1694,6 @@ function closeVideos(){
   $("#vmodal").hidden = true; $("#scrim").hidden = true;
   playSong();
 }
-// intro video pop-up: shows every time someone opens the site (not on the admin page)
-function openIntro(){
-  const k = side === "killer";
-  $("#introTitle").textContent = `Watch the ${k ? "Killer" : "Pretty"} intro video`;
-  $("#introVid").src = `media/pretty-killer/intro-${k ? "killer" : "pretty"}.mp4`;
-  $("#intro").hidden = false;
-}
-function closeIntro(){ $("#introVid").pause(); $("#intro").hidden = true; }
-document.addEventListener("click", e => { if (e.target.closest("[data-introclose]") || e.target === $("#intro")) closeIntro(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#intro").hidden) closeIntro(); });
 $("#soundBtn").addEventListener("click", () => {
   soundOn = !soundOn; updateSoundBtn();
   if (soundOn) playSong(); else song.pause();
@@ -1918,7 +1892,6 @@ async function syncMine(){
 (async function boot(){
   setSide(override || clockSide());
   renderEvents(); renderMine();
-  if (!location.hash.startsWith("#admin-")) openIntro();
   try { await initFirebase(); } catch(e){ console.warn("Firebase didn't load; using demo mode.", e); fb = null; }
   // live "seats open" count on the show list (and a heads-up when a sold-out show gets a free seat)
   const wasFull = {};
