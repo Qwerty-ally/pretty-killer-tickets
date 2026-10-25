@@ -30,7 +30,7 @@ service cloud.firestore {
     // page writes the secret into adminTokens/now (which nobody can read) in
     // the same request as the seat changes, and each change checks that token.
     function isAdminKey(key) {
-      return keyMatches(key, "b94f675eab699669d787a6cdf820110e58794c99b230a9da6b32363ed9268f03");
+      return keyMatches(key, "7f7e8f183dea08e5500a77f9546429c5de662a98ee8e5ccc1fe2f5b97ffa23df");
     }
     function adminActing() {
       return getAfter(/databases/$(database)/documents/adminTokens/now).data.at == request.time
