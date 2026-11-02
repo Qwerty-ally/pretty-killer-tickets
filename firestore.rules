@@ -128,6 +128,21 @@ service cloud.firestore {
       allow delete: if adminActing();
     }
 
+    // photos/{id}: photo booth pictures guests chose to send to Finn. Each one is locked
+    // (encrypted) on the guest's phone so only the private admin link can open it,
+    // which is why reading the locked data is allowed. Only the admin can delete.
+    match /photos/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(["epk", "iv", "data", "frame", "mode", "createdAt"])
+                    && request.resource.data.epk is string && request.resource.data.epk.size() <= 120
+                    && request.resource.data.iv is string && request.resource.data.iv.size() <= 40
+                    && request.resource.data.data is string && request.resource.data.data.size() <= 900000
+                    && request.resource.data.frame in ["pretty", "killer"]
+                    && request.resource.data.mode in ["single", "strip"]
+                    && request.resource.data.createdAt == request.time;
+      allow delete: if adminActing();
+    }
+
     // votes/{id}: one list of favorite songs per vote. Can't be changed; only
     // the admin can delete (reset) votes.
     match /votes/{id} {

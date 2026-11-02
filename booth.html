@@ -64,6 +64,8 @@ h1{margin:4px 0 14px;font:900 clamp(40px,10vw,64px)/.95 var(--display)}
 .btn{flex:1 1 auto;display:inline-flex;justify-content:center;align-items:center;gap:6px;font:600 14px var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);padding:14px 16px;background:var(--accent);color:var(--accent-ink);border:0;border-radius:var(--radius);cursor:pointer;text-decoration:none}
 .btn.ghost{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
 .btn[hidden]{display:none}
+.send{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;cursor:pointer}
+.send input{width:18px;height:18px;accent-color:var(--accent)}
 .snap{flex-basis:100%;font-size:18px;padding:18px}
 .hint{font-size:13px;color:var(--muted);margin-top:10px}
 footer{margin-top:28px;font:12px var(--mono);color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
@@ -106,7 +108,8 @@ footer a{color:inherit}
     <button class="btn" type="button" id="share" hidden>Share</button>
     <button class="btn ghost" type="button" id="retake" hidden>Retake</button>
   </div>
-  <p class="hint">Your photo stays on your phone. Nothing gets uploaded.<span id="res"></span></p>
+  <label class="send"><input type="checkbox" id="sendFinn" checked> Send to maybe be featured in the music video/movie</label>
+  <p class="hint">Your photo saves to your phone. With the box ticked, a copy goes to Finn (locked so only Finn can open it) and could be in the music video or movie.<span id="res"></span></p>
 
   <footer>
     <a href="./">Tickets</a>
@@ -176,8 +179,8 @@ function drawOverlay(){
 /* ---------- pictures → framed PNG ---------- */
 // the saved picture is drawn bigger than the layout (2x, or 3x for the narrow strip) so it stays sharp
 const SCALE = { single:2, strip:3 };
-function compose(){
-  const L = LAYOUTS[mode], k = SCALE[mode], c = document.createElement("canvas"); c.width = L.W * k; c.height = L.H * k;
+function compose(k = SCALE[mode]){
+  const L = LAYOUTS[mode], c = document.createElement("canvas"); c.width = L.W * k; c.height = L.H * k;
   const ctx = c.getContext("2d");
   ctx.scale(k, k); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
   L.holes.forEach((h, i) => {
@@ -203,6 +206,7 @@ function showResult(){
   $("#stage").classList.toggle("tall", mode === "strip");
   $("#overlay").hidden = true; $("#msg").hidden = true; $("#shotNo").hidden = true;
   setButtons("result");
+  queueSend();
 }
 
 /* ---------- camera ---------- */
@@ -266,7 +270,7 @@ async function snap(){
   if (!$("#cam").videoWidth) return;
   const n = mode === "strip" ? 3 : 1;
   $("#snap").disabled = $("#flip").disabled = true;
-  shots = [];
+  sendNow(); shots = [];
   for (let i = 0; i < n; i++){
     if (n > 1){ $("#shotNo").textContent = `Photo ${i + 1} of ${n}`; $("#shotNo").hidden = false; }
     await countdown();
@@ -279,7 +283,7 @@ async function snap(){
 }
 function retake(){
   $("#shot").hidden = true; $("#overlay").hidden = false; $("#stage").classList.remove("tall");
-  photo = null; shots = [];
+  sendNow(); photo = null; shots = [];
   startCam();
 }
 
@@ -326,9 +330,63 @@ $("#upload").addEventListener("change", async e => {
   const load = f => new Promise(res => { const img = new Image(); img.onload = () => res({ el:img, w:img.naturalWidth, h:img.naturalHeight, mirror:false }); img.onerror = () => res(null); img.src = URL.createObjectURL(f); });
   const got = (await Promise.all(files.map(load))).filter(Boolean);
   if (!got.length) return;
-  stopCam(); shots = got;   // fewer than 3 in strip mode: the last one repeats
+  stopCam(); sendNow(); shots = got;   // fewer than 3 in strip mode: the last one repeats
   showResult();
 });
+
+/* ---------- send a copy to Finn ----------
+   The photo is locked (encrypted) with a public key before it leaves the phone. Only the
+   private admin link can unlock it, so nobody else can see guests' photos in the database.
+   If the admin link's secret changes, PHOTO_KEY must be made again from the new secret. */
+const FIREBASE = {
+  apiKey: "AIzaSyDwUNNHtLV-SBcfA00O5lSNW9QlBHR8RKI",
+  authDomain: "finn-pretty-killer-tix.firebaseapp.com",
+  projectId: "finn-pretty-killer-tix",
+  storageBucket: "finn-pretty-killer-tix.firebasestorage.app",
+  messagingSenderId: "766285108634",
+  appId: "1:766285108634:web:319555acceba99326b5623"
+};
+const PHOTO_KEY = { kty:"EC", crv:"P-256", x:"eL2Zq0X5XvjhRwBP34JUGEpPBvOfvODkoZubFbHQq10", y:"JdlPAmOpdQZr3VuGlCA0rqZSIFrsUAo-dLnZ-DMl9kM" };
+const b64 = buf => { let t = ""; new Uint8Array(buf).forEach(c => t += String.fromCharCode(c)); return btoa(t); };
+let db = null, sendTimer = null, unsent = false;
+function loadScript(src){
+  return new Promise((res, rej) => { const el = document.createElement("script"); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); });
+}
+async function getDb(){
+  if (db) return db;
+  const base = "https://www.gstatic.com/firebasejs/10.12.2/";
+  await loadScript(base + "firebase-app-compat.js");
+  await loadScript(base + "firebase-firestore-compat.js");
+  firebase.initializeApp(FIREBASE);
+  return db = firebase.firestore();
+}
+async function lock(bytes){
+  const pub = await crypto.subtle.importKey("jwk", PHOTO_KEY, { name:"ECDH", namedCurve:"P-256" }, false, []);
+  const eph = await crypto.subtle.generateKey({ name:"ECDH", namedCurve:"P-256" }, true, ["deriveBits"]);
+  const shared = await crypto.subtle.deriveBits({ name:"ECDH", public:pub }, eph.privateKey, 256);
+  const key = await crypto.subtle.importKey("raw", await crypto.subtle.digest("SHA-256", shared), "AES-GCM", false, ["encrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, key, bytes);
+  return { epk:b64(await crypto.subtle.exportKey("raw", eph.publicKey)), iv:b64(iv), data:b64(data) };
+}
+async function sendNow(){
+  clearTimeout(sendTimer);
+  if (!unsent || !shots.length || !$("#sendFinn").checked) return;
+  unsent = false;
+  const c = compose(1), f = frame, m = mode;   // a smaller copy so it fits in one database record
+  try {
+    let blob = null;
+    for (const q of [.85, .72, .6]){ blob = await new Promise(r => c.toBlob(r, "image/jpeg", q)); if (blob && blob.size < 650000) break; }
+    if (!blob || blob.size >= 650000) return;
+    const locked = await lock(await blob.arrayBuffer());
+    await (await getDb()).collection("photos").add({ ...locked, frame:f, mode:m, createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+  } catch(e){ console.warn("The photo wasn't sent to Finn.", e); }
+}
+// send a few seconds after the last change (switching frames re-frames the photo), or right away on Retake / leaving
+function queueSend(){ unsent = true; clearTimeout(sendTimer); sendTimer = setTimeout(sendNow, 6000); }
+$("#sendFinn").addEventListener("change", e => { if (e.target.checked && shots.length) queueSend(); });
+addEventListener("pagehide", sendNow);
+document.addEventListener("visibilitychange", () => { if (document.hidden) sendNow(); });
 
 setButtons("idle");
 setFrame(frame);

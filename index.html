@@ -211,6 +211,11 @@ td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
 td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .rel{font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;padding:4px 8px;border-radius:var(--radius);background:var(--ground-2);border:1px solid var(--line)}
 .rel.family{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:8px}
+.photo-grid figure{margin:0;display:flex;flex-direction:column;gap:4px}
+.photo-grid .ph{display:block;aspect-ratio:4/5;background:var(--line);overflow:hidden;border-radius:var(--radius)}
+.photo-grid .ph img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.photo-grid figcaption{font:12px/1.3 var(--mono);color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .linkish{background:none;border:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:13px}
 .confirm{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 .empty{color:var(--muted);text-align:center;padding:32px}
@@ -565,6 +570,11 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
           <div id="votesAdmin"></div>
           <div id="votesReset"></div>
         </section>
+        <section class="acard" style="grid-column:1/-1">
+          <h3 id="photosHead">Photo booth</h3>
+          <p class="mode-note">Photos guests sent from the <a href="booth.html">photo booth</a> to maybe be in the music video or movie. Tap one to open it full size.</p>
+          <div class="photo-grid" id="photosAdmin"></div>
+        </section>
       </div>
     </div>
   </section>
@@ -788,6 +798,12 @@ const Store = {
     batch.set(fb.db.collection("adminTokens").doc("now"), { key: adminKey, at: firebase.firestore.FieldValue.serverTimestamp() });
     batch.set(fb.db.collection("tracklist").doc("prettykiller"), { pretty: t.pretty, killer: t.killer, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     await batch.commit();
+  },
+  // photo booth pictures (locked; the admin page unlocks them), newest first
+  watchPhotos(cb){
+    if (!fb) return cb([]);
+    return fb.db.collection("photos").orderBy("createdAt", "desc").limit(300)
+      .onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }))), () => cb([]));
   },
   // admin-only write helper: admin token + one write, in one batch
   async adminWrite(fn){
@@ -1167,6 +1183,7 @@ function startAdmin(){
   renderNpFrom(); updateAudioUI(); checkFiles();
   if (!gbAdminUnwatch) gbAdminUnwatch = Store.watchGuestbook(l => { gbAll = l; renderGuestbookAdmin(); }, true);
   if (!votesUnwatch) votesUnwatch = Store.watchVotes(l => { votes = l; renderVotesAdmin(); });
+  if (!photosUnwatch) photosUnwatch = Store.watchPhotos(l => { photoDocs = l; renderPhotosAdmin(); });
   if (adminUnwatch) return;
   adminUnwatch = Store.watchTickets(rows => { adminRows = rows.filter(t => !t.test); testRows = rows.filter(t => t.test); renderAdmin(); },
     () => { $("#rows").innerHTML = `<tr><td colspan="8" class="empty">The ticket list didn't load. Check your connection and reload the page.</td></tr>`; });
@@ -1596,6 +1613,49 @@ function renderGuestbook(){
     ? list.map(m => `<article class="gb-msg"><p>${esc(m.message)}</p><footer><b>${esc(m.name)}</b><span>${gbDate(m.createdAt)}</span></footer></article>`).join("")
     : `<p class="mode-note">No messages yet. Be the first!</p>`;
 }
+/* ---------- photo booth pictures ----------
+   Guests' photos are locked on their phone with a public key (see booth.html). The matching
+   private key comes from the admin link's secret, so only this page can unlock them. */
+let photoDocs = [], photosUnwatch = null, photoPriv = null;
+const photoURLs = {};   // id -> unlocked picture (object URL), or "" if it couldn't be unlocked
+const unb64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+async function photoKey(){
+  if (photoPriv) return photoPriv;
+  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode("pk-photos:" + adminKey)));
+  const d64 = btoa(String.fromCharCode(...d)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+  return photoPriv = await crypto.subtle.importKey("jwk", { kty:"EC", crv:"P-256", x:"eL2Zq0X5XvjhRwBP34JUGEpPBvOfvODkoZubFbHQq10", y:"JdlPAmOpdQZr3VuGlCA0rqZSIFrsUAo-dLnZ-DMl9kM", d:d64 },
+    { name:"ECDH", namedCurve:"P-256" }, false, ["deriveBits"]);
+}
+async function unlockPhoto(p){
+  try {
+    const pub = await crypto.subtle.importKey("raw", unb64(p.epk), { name:"ECDH", namedCurve:"P-256" }, false, []);
+    const shared = await crypto.subtle.deriveBits({ name:"ECDH", public:pub }, await photoKey(), 256);
+    const key = await crypto.subtle.importKey("raw", await crypto.subtle.digest("SHA-256", shared), "AES-GCM", false, ["decrypt"]);
+    const bytes = await crypto.subtle.decrypt({ name:"AES-GCM", iv:unb64(p.iv) }, key, unb64(p.data));
+    return URL.createObjectURL(new Blob([bytes], { type:"image/jpeg" }));
+  } catch(e){ return ""; }
+}
+async function renderPhotosAdmin(){
+  await Promise.all(photoDocs.filter(p => !(p.id in photoURLs)).map(async p => { photoURLs[p.id] = await unlockPhoto(p); }));
+  $("#photosHead").textContent = `Photo booth · ${photoDocs.length} photo${photoDocs.length === 1 ? "" : "s"}`;
+  $("#photosAdmin").innerHTML = photoDocs.length ? photoDocs.map(p => {
+    const url = photoURLs[p.id], when = p.createdAt && p.createdAt.toDate ? p.createdAt.toDate() : null;
+    const tag = `${p.frame === "killer" ? "Killer" : "Pretty"}${p.mode === "strip" ? " strip" : ""}`;
+    return `<figure>
+      ${url ? `<a class="ph" href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="${tag} photo" loading="lazy"></a>` : `<div class="ph"></div>`}
+      <figcaption>${when ? `${when.toLocaleDateString([], { month:"short", day:"numeric" })} ${when.toLocaleTimeString([], { hour:"numeric", minute:"2-digit" })} · ` : ""}${tag}
+        ${url ? `<a class="linkish" href="${url}" download="pretty-killer-${esc(p.id)}.jpg">Save</a>` : `<span>Couldn't unlock</span>`}
+        <button class="linkish" type="button" data-photo-del="${esc(p.id)}">Delete</button></figcaption>
+    </figure>`;
+  }).join("") : `<p class="mode-note">No photos yet.</p>`;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-photo-del]"); if (!b) return;
+  if (b.dataset.sure !== "1"){ b.dataset.sure = "1"; b.textContent = "Tap again to delete"; return; }
+  try { await Store.adminWrite(batch => batch.delete(fb.db.collection("photos").doc(b.dataset.photoDel))); }
+  catch(err){ toast("That didn't go through. Try again."); }
+});
+
 function renderGuestbookAdmin(){
   const pending = gbAll.filter(m => !m.approved).sort((a, b) => b.createdAt - a.createdAt), shown = gbAll.filter(m => m.approved).sort((a, b) => b.createdAt - a.createdAt);
   $("#gbAdminHead").textContent = `Guestbook · ${pending.length} waiting`;
