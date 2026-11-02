@@ -52,6 +52,8 @@ h1{margin:4px 0 14px;font:900 clamp(40px,10vw,64px)/.95 var(--display)}
 .stage .hole video{transform:scaleX(-1)}
 .stage .hole video.back{transform:none}
 .count{position:absolute;inset:0;display:grid;place-items:center;font:900 140px/1 var(--display);color:#fff;text-shadow:0 4px 24px rgba(0,0,0,.6);pointer-events:none}
+.shotno{position:absolute;top:2%;left:50%;transform:translateX(-50%);font:600 14px var(--mono);text-transform:uppercase;letter-spacing:.1em;background:var(--accent);color:var(--accent-ink);padding:6px 12px;border-radius:var(--radius);pointer-events:none}
+.stage.tall{aspect-ratio:600/2040;width:auto;height:min(82vh,960px);margin:0 auto}
 .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .4s}
 .flash.on{opacity:1;transition:none}
 .msg{position:absolute;inset:13.33% 5.56% 18.6%;display:grid;place-items:center;text-align:center;padding:16px;color:#f2ecf0;font-size:15px}
@@ -77,6 +79,10 @@ footer a{color:inherit}
     <button type="button" data-frame="pretty" aria-pressed="true">Pretty frame</button>
     <button type="button" data-frame="killer" aria-pressed="false">Killer frame</button>
   </div>
+  <div class="frames" role="group" aria-label="Photo type">
+    <button type="button" data-mode="single" aria-pressed="true">1 photo</button>
+    <button type="button" data-mode="strip" aria-pressed="false">Photo strip · 3 photos</button>
+  </div>
 
   <div class="stage" id="stage">
     <div class="hole"><video id="cam" playsinline muted autoplay></video></div>
@@ -84,6 +90,7 @@ footer a{color:inherit}
     <canvas id="overlay" width="1080" height="1350" aria-hidden="true"></canvas>
     <div class="msg" id="msg">Tap <b>&nbsp;Start camera&nbsp;</b> to begin.</div>
     <div class="count" id="count" hidden></div>
+    <div class="shotno" id="shotNo" hidden></div>
     <div class="flash" id="flash"></div>
   </div>
 
@@ -91,7 +98,7 @@ footer a{color:inherit}
     <button class="btn snap" type="button" id="start">Start camera</button>
     <button class="btn snap" type="button" id="snap" hidden>📸 Take photo</button>
     <button class="btn ghost" type="button" id="flip" hidden>Flip camera</button>
-    <label class="btn ghost" id="uploadBtn">Use a photo<input type="file" accept="image/*" id="upload" hidden></label>
+    <label class="btn ghost" id="uploadBtn"><span id="uploadLabel">Use a photo</span><input type="file" accept="image/*" id="upload" hidden></label>
     <button class="btn" type="button" id="save" hidden>Save photo</button>
     <button class="btn" type="button" id="share" hidden>Share</button>
     <button class="btn ghost" type="button" id="retake" hidden>Retake</button>
@@ -107,78 +114,84 @@ footer a{color:inherit}
 
 <script>
 const $ = s => document.querySelector(s);
-const W = 1080, H = 1350, HOLE = { x:60, y:180, w:960, h:1000 };   // photo area inside the frame
-let frame = new Date().getHours() < 12 ? "pretty" : "killer";
+// two layouts: one photo (4:5), or a photo strip of 3 (photos the same shape as the camera preview)
+const LAYOUTS = {
+  single:{ W:1080, H:1350, holes:[{ x:60, y:180, w:960, h:1000 }] },
+  strip: { W:600,  H:2040, holes:[0, 1, 2].map(i => ({ x:40, y:160 + i * 564, w:520, h:540 })) }
+};
+let frame = new Date().getHours() < 12 ? "pretty" : "killer", mode = "single";
 let stream = null, facing = "user", photo = null;   // photo = the finished PNG blob
+let shots = [];   // [{ el, w, h, mirror }] so switching frames re-frames the same photos
 
-/* ---------- the two frames, drawn on a transparent canvas ---------- */
-function drawFrame(ctx, which){
+/* ---------- the two frames, drawn around the photo holes ---------- */
+function drawFrame(ctx, which, L){
+  const { W, H, holes } = L, s = W / 1080, bs = W === 1080 ? 1 : .75, top = holes[0].y;
   ctx.save();
-  // everything except the photo hole
-  ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.rect(HOLE.x, HOLE.y + HOLE.h, HOLE.w, -HOLE.h); ctx.clip("evenodd");
+  // everything except the photo holes
+  ctx.beginPath(); ctx.rect(0, 0, W, H); holes.forEach(h => ctx.rect(h.x, h.y, h.w, h.h)); ctx.clip("evenodd");
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
   if (which === "pretty"){
     ctx.fillStyle = "#f8d2e1"; ctx.fillRect(0, 0, W, H);
-    // collage tiles along the edges
-    const cols = ["#f7c4d6", "#ee9fbf", "#fde1ea", "#f4a9c6"];
-    for (let x = 0, i = 0; x < W; x += 90, i++){ ctx.fillStyle = cols[i % 4]; ctx.fillRect(x, 0, 90, 26); ctx.fillStyle = cols[(i + 2) % 4]; ctx.fillRect(x, H - 26, 90, 26); }
+    // collage tiles along the top and bottom edges
+    const cols = ["#f7c4d6", "#ee9fbf", "#fde1ea", "#f4a9c6"], tw = 90 * s, th = 26 * s;
+    for (let x = 0, i = 0; x < W; x += tw, i++){ ctx.fillStyle = cols[i % 4]; ctx.fillRect(x, 0, tw, th); ctx.fillStyle = cols[(i + 2) % 4]; ctx.fillRect(x, H - th, tw, th); }
     // ransom-note letters
-    const word = "PRETTY", tilt = [-6, 4, -3, 6, -4, 3];
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    [...word].forEach((ch, i) => {
-      const cx = 540 + (i - 2.5) * 118;
-      ctx.save(); ctx.translate(cx, 104); ctx.rotate(tilt[i] * Math.PI / 180);
+    const tilt = [-6, 4, -3, 6, -4, 3];
+    [..."PRETTY"].forEach((ch, i) => {
+      ctx.save(); ctx.translate(W / 2 + (i - 2.5) * 118 * s, top * .58); ctx.rotate(tilt[i] * Math.PI / 180); ctx.scale(s, s);
       ctx.fillStyle = i % 2 ? "#161015" : "#fffafc"; ctx.fillRect(-52, -58, 104, 116);
       ctx.fillStyle = i % 2 ? "#f25fc4" : "#161015";
-      ctx.font = (i % 3 === 1 ? "400 92px 'Special Elite'" : "900 96px 'Bodoni Moda'"); ctx.fillText(ch, 0, 6);
+      ctx.font = i % 3 === 1 ? "400 92px 'Special Elite'" : "900 96px 'Bodoni Moda'"; ctx.fillText(ch, 0, 6);
       ctx.restore();
     });
-    ctx.fillStyle = "#161015"; ctx.font = "900 46px 'Bodoni Moda'"; ctx.fillText("FINN SHAPIRO", 540, 1236);
-    ctx.fillStyle = "#f25fc4"; ctx.font = "56px 'Yellowtail'"; ctx.fillText("the morning set", 540, 1292);
-    // hearts in the corners
-    const heart = (x, y, s) => { ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.fillStyle = "#f25fc4"; ctx.beginPath(); ctx.moveTo(0, 6); ctx.bezierCurveTo(-14, -6, -6, -18, 0, -9); ctx.bezierCurveTo(6, -18, 14, -6, 0, 6); ctx.fill(); ctx.restore(); };
-    heart(110, 1250, 2.4); heart(970, 1250, 2.4);
+    ctx.fillStyle = "#161015"; ctx.font = `900 ${46 * bs}px 'Bodoni Moda'`; ctx.fillText("FINN SHAPIRO", W / 2, H - 114 * bs);
+    ctx.fillStyle = "#f25fc4"; ctx.font = `${56 * bs}px 'Yellowtail'`; ctx.fillText("the morning set", W / 2, H - 58 * bs);
+    // hearts by the name
+    const heart = (x, y, k) => { ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.fillStyle = "#f25fc4"; ctx.beginPath(); ctx.moveTo(0, 6); ctx.bezierCurveTo(-14, -6, -6, -18, 0, -9); ctx.bezierCurveTo(6, -18, 14, -6, 0, 6); ctx.fill(); ctx.restore(); };
+    heart(110 * s, H - 100 * bs, 2.4 * bs); heart(W - 110 * s, H - 100 * bs, 2.4 * bs);
   } else {
     ctx.fillStyle = "#0b0a0c"; ctx.fillRect(0, 0, W, H);
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.shadowColor = "#ff3fae"; ctx.shadowBlur = 30;
-    ctx.fillStyle = "#ff3fae"; ctx.font = "400 150px 'Anton'"; ctx.fillText("KILLER", 540, 96);
+    ctx.shadowColor = "#ff3fae"; ctx.shadowBlur = 30 * s;
+    ctx.fillStyle = "#ff3fae"; ctx.font = `400 ${150 * s}px 'Anton'`; ctx.fillText("KILLER", W / 2, top * .53);
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = "#ff3fae"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(250, 168); ctx.lineTo(830, 154); ctx.stroke();
-    ctx.fillStyle = "#f2ecf0"; ctx.font = "600 40px 'IBM Plex Mono'"; ctx.fillText("F I N N   S H A P I R O", 540, 1240);
-    ctx.fillStyle = "#8c8390"; ctx.font = "400 26px 'IBM Plex Mono'"; ctx.fillText("THE NIGHT SET · PRETTY KILLER TOUR", 540, 1296);
+    ctx.strokeStyle = "#ff3fae"; ctx.lineWidth = 6 * s; ctx.beginPath(); ctx.moveTo(W * .23, top - 12 * s); ctx.lineTo(W * .77, top - 26 * s); ctx.stroke();
+    ctx.fillStyle = "#f2ecf0"; ctx.font = `600 ${40 * bs}px 'IBM Plex Mono'`; ctx.fillText("F I N N   S H A P I R O", W / 2, H - 110 * bs);
+    ctx.fillStyle = "#8c8390"; ctx.font = `400 ${26 * bs}px 'IBM Plex Mono'`; ctx.fillText("THE NIGHT SET · PRETTY KILLER TOUR", W / 2, H - 54 * bs);
   }
   ctx.restore();
-  // a thin line around the photo
-  ctx.strokeStyle = which === "pretty" ? "#161015" : "#ff3fae"; ctx.lineWidth = 6;
-  ctx.strokeRect(HOLE.x - 3, HOLE.y - 3, HOLE.w + 6, HOLE.h + 6);
+  // a thin line around each photo
+  ctx.strokeStyle = which === "pretty" ? "#161015" : "#ff3fae"; ctx.lineWidth = 6 * Math.max(s, .75);
+  holes.forEach(h => ctx.strokeRect(h.x - 3, h.y - 3, h.w + 6, h.h + 6));
 }
+// the live preview always uses the one-photo frame (strip photos are the same shape)
 function drawOverlay(){
   const ctx = $("#overlay").getContext("2d");
-  ctx.clearRect(0, 0, W, H); drawFrame(ctx, frame);
+  ctx.clearRect(0, 0, 1080, 1350); drawFrame(ctx, frame, LAYOUTS.single);
 }
 
-/* ---------- picture → framed PNG ---------- */
-// source = video or image; draws it cover-cropped into the hole
-function compose(source, sw, sh, mirror){
-  const c = document.createElement("canvas"); c.width = W; c.height = H;
+/* ---------- pictures → framed PNG ---------- */
+function compose(){
+  const L = LAYOUTS[mode], c = document.createElement("canvas"); c.width = L.W; c.height = L.H;
   const ctx = c.getContext("2d");
-  const scale = Math.max(HOLE.w / sw, HOLE.h / sh), dw = sw * scale, dh = sh * scale;
-  ctx.save(); ctx.beginPath(); ctx.rect(HOLE.x, HOLE.y, HOLE.w, HOLE.h); ctx.clip();
-  if (mirror){ ctx.translate(HOLE.x * 2 + HOLE.w, 0); ctx.scale(-1, 1); }
-  ctx.drawImage(source, HOLE.x + (HOLE.w - dw) / 2, HOLE.y + (HOLE.h - dh) / 2, dw, dh);
-  ctx.restore();
-  drawFrame(ctx, frame);
+  L.holes.forEach((h, i) => {
+    const src = shots[i] || shots[shots.length - 1];
+    const scale = Math.max(h.w / src.w, h.h / src.h), dw = src.w * scale, dh = src.h * scale;
+    ctx.save(); ctx.beginPath(); ctx.rect(h.x, h.y, h.w, h.h); ctx.clip();
+    if (src.mirror){ ctx.translate(h.x * 2 + h.w, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(src.el, h.x + (h.w - dw) / 2, h.y + (h.h - dh) / 2, dw, dh);
+    ctx.restore();
+  });
+  drawFrame(ctx, frame, L);
   return c;
 }
-let lastSource = null;   // { el, w, h, mirror } so switching frames re-frames the same photo
 function showResult(){
-  const c = compose(lastSource.el, lastSource.w, lastSource.h, lastSource.mirror);
-  c.toBlob(b => {
+  compose().toBlob(b => {
     photo = b;
     const img = $("#shot"); if (img.src) URL.revokeObjectURL(img.src);
     img.src = URL.createObjectURL(b); img.hidden = false;
   }, "image/png");
-  $("#overlay").hidden = true; $("#msg").hidden = true;
+  $("#stage").classList.toggle("tall", mode === "strip");
+  $("#overlay").hidden = true; $("#msg").hidden = true; $("#shotNo").hidden = true;
   setButtons("result");
 }
 
@@ -197,36 +210,53 @@ async function startCam(){
   }
 }
 function stopCam(){ if (stream){ stream.getTracks().forEach(t => t.stop()); stream = null; } }
-function setButtons(mode){
-  $("#start").hidden = mode !== "idle";
-  $("#snap").hidden = mode !== "live";
-  $("#flip").hidden = mode !== "live";
-  $("#uploadBtn").hidden = mode === "result";
-  $("#save").hidden = $("#retake").hidden = mode !== "result";
-  $("#share").hidden = mode !== "result" || !navigator.canShare;
+function setButtons(m){
+  $("#start").hidden = m !== "idle";
+  $("#snap").hidden = m !== "live";
+  $("#flip").hidden = m !== "live";
+  $("#uploadBtn").hidden = m === "result";
+  $("#save").hidden = $("#retake").hidden = m !== "result";
+  $("#share").hidden = m !== "result" || !navigator.canShare;
+  $("#snap").textContent = mode === "strip" ? "📸 Take 3 photos" : "📸 Take photo";
+  $("#uploadLabel").textContent = mode === "strip" ? "Use 3 photos" : "Use a photo";
+  $("#upload").multiple = mode === "strip";
 }
-async function snap(){
-  const v = $("#cam"); if (!v.videoWidth) return;
-  $("#snap").disabled = true;
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function countdown(){
   const cnt = $("#count"); cnt.hidden = false;
-  for (const n of [3, 2, 1]){ cnt.textContent = n; await new Promise(r => setTimeout(r, 800)); }
+  for (const n of [3, 2, 1]){ cnt.textContent = n; await wait(800); }
   cnt.hidden = true;
   const f = $("#flash"); f.classList.add("on"); setTimeout(() => f.classList.remove("on"), 60);
-  // freeze the frame so it can be re-framed later
-  const still = document.createElement("canvas"); still.width = v.videoWidth; still.height = v.videoHeight;
+}
+function grab(){
+  const v = $("#cam"), still = document.createElement("canvas");
+  still.width = v.videoWidth; still.height = v.videoHeight;
   still.getContext("2d").drawImage(v, 0, 0);
-  lastSource = { el:still, w:still.width, h:still.height, mirror:facing === "user" };
+  return { el:still, w:still.width, h:still.height, mirror:facing === "user" };
+}
+async function snap(){
+  if (!$("#cam").videoWidth) return;
+  const n = mode === "strip" ? 3 : 1;
+  $("#snap").disabled = $("#flip").disabled = true;
+  shots = [];
+  for (let i = 0; i < n; i++){
+    if (n > 1){ $("#shotNo").textContent = `Photo ${i + 1} of ${n}`; $("#shotNo").hidden = false; }
+    await countdown();
+    shots.push(grab());
+    if (i < n - 1) await wait(700);   // a moment to change poses
+  }
   stopCam(); $("#cam").srcObject = null;
-  $("#snap").disabled = false;
+  $("#snap").disabled = $("#flip").disabled = false;
   showResult();
 }
 function retake(){
-  $("#shot").hidden = true; $("#overlay").hidden = false; photo = null; lastSource = null;
+  $("#shot").hidden = true; $("#overlay").hidden = false; $("#stage").classList.remove("tall");
+  photo = null; shots = [];
   startCam();
 }
 
 /* ---------- save / share ---------- */
-const fileName = () => `pretty-killer-${frame}-${Date.now()}.png`;
+const fileName = () => `pretty-killer-${frame}${mode === "strip" ? "-strip" : ""}-${Date.now()}.png`;
 function save(){
   if (!photo) return;
   const a = document.createElement("a"); a.href = URL.createObjectURL(photo); a.download = fileName();
@@ -246,28 +276,37 @@ function setFrame(f){
   document.documentElement.dataset.side = f;
   document.querySelectorAll("[data-frame]").forEach(b => b.setAttribute("aria-pressed", b.dataset.frame === f));
   drawOverlay();
-  if (lastSource) showResult();
+  if (shots.length) showResult();
+}
+function setMode(m){
+  mode = m;
+  document.querySelectorAll("[data-mode]").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === m));
+  if (shots.length) retake();   // a different number of photos: start over
+  else setButtons(stream ? "live" : "idle");
 }
 document.querySelectorAll("[data-frame]").forEach(b => b.addEventListener("click", () => setFrame(b.dataset.frame)));
+document.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
 $("#start").addEventListener("click", startCam);
 $("#snap").addEventListener("click", snap);
 $("#flip").addEventListener("click", () => { facing = facing === "user" ? "environment" : "user"; startCam(); });
 $("#save").addEventListener("click", save);
 $("#share").addEventListener("click", share);
 $("#retake").addEventListener("click", retake);
-$("#upload").addEventListener("change", e => {
-  const f = e.target.files[0]; if (!f) return;
-  const img = new Image();
-  img.onload = () => { stopCam(); lastSource = { el:img, w:img.naturalWidth, h:img.naturalHeight, mirror:false }; showResult(); };
-  img.src = URL.createObjectURL(f);
-  e.target.value = "";
+$("#upload").addEventListener("change", async e => {
+  const files = [...e.target.files].slice(0, mode === "strip" ? 3 : 1); e.target.value = "";
+  if (!files.length) return;
+  const load = f => new Promise(res => { const img = new Image(); img.onload = () => res({ el:img, w:img.naturalWidth, h:img.naturalHeight, mirror:false }); img.onerror = () => res(null); img.src = URL.createObjectURL(f); });
+  const got = (await Promise.all(files.map(load))).filter(Boolean);
+  if (!got.length) return;
+  stopCam(); shots = got;   // fewer than 3 in strip mode: the last one repeats
+  showResult();
 });
 
 setButtons("idle");
 setFrame(frame);
 // redraw once the fonts are ready so the frame text uses them
 Promise.all(["900 96px 'Bodoni Moda'", "92px 'Special Elite'", "56px 'Yellowtail'", "150px 'Anton'", "600 40px 'IBM Plex Mono'"].map(f => document.fonts.load(f)))
-  .then(() => { drawOverlay(); if (lastSource) showResult(); }).catch(() => {});
+  .then(() => { drawOverlay(); if (shots.length) showResult(); }).catch(() => {});
 </script>
 </body>
 </html>
