@@ -143,6 +143,18 @@ service cloud.firestore {
       allow delete: if adminActing();
     }
 
+    // battleVotes/{id}: one vote in the Pretty vs Killer battle (battle.html).
+    // Can't be changed; only the admin can delete.
+    match /battleVotes/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(["round", "pick", "createdAt"])
+                    && request.resource.data.round is int
+                    && request.resource.data.round >= 1 && request.resource.data.round <= 15
+                    && request.resource.data.pick in ["pretty", "killer"]
+                    && request.resource.data.createdAt == request.time;
+      allow delete: if adminActing();
+    }
+
     // votes/{id}: one list of favorite songs per vote. Can't be changed; only
     // the admin can delete (reset) votes.
     match /votes/{id} {

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en" data-side="pretty">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pretty vs Killer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Bodoni+Moda:wght@700;900&family=Special+Elite&family=IBM+Plex+Mono:wght@400;600&family=Karla:wght@400;600;800&display=swap">
+<style>
+/* same Pretty (AM) / Killer (PM) tokens as the other Pretty Killer pages */
+:root{
+  --ground:#f8d2e1; --surface:#fffafc; --ink:#161015; --muted:#8e5a73;
+  --accent:#f25fc4; --accent-ink:#161015; --line:#e9b1c9;
+  --display:"Bodoni Moda","Didot",Georgia,serif;
+  --body:"Karla",system-ui,sans-serif;
+  --mono:"Special Elite","Courier New",monospace;
+  --radius:3px; --shadow:0 18px 28px -14px rgba(120,30,75,.45);
+  --label-case:none; --label-track:.04em;
+  color-scheme:light;
+}
+:root[data-side="killer"]{
+  --ground:#09080a; --surface:#141216; --ink:#f2ecf0; --muted:#8c8390;
+  --accent:#ff3fae; --accent-ink:#0a0a0a; --line:#2c272f;
+  --display:"Anton","Impact",sans-serif;
+  --body:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --radius:0px; --shadow:6px 6px 0 0 #ff3fae;
+  --label-case:uppercase; --label-track:.14em;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font:16px/1.5 var(--body);min-height:100vh}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px 56px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0}
+.brand b{font:900 22px/1 var(--display)}
+[data-side="killer"] .brand b{font-weight:400;text-transform:uppercase;letter-spacing:.04em}
+.label{font:600 12px/1.2 var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);color:var(--muted)}
+
+/* title: Pretty half in pink serif, Killer half in black neon */
+.title{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:20px 0 6px}
+.title .p{font:900 clamp(44px,10vw,96px)/1 "Bodoni Moda",Georgia,serif;color:#161015;background:#fffafc;padding:4px 14px;transform:rotate(-2deg)}
+.title .vs{font:600 clamp(16px,3vw,22px) "IBM Plex Mono",monospace;color:var(--muted)}
+.title .k{font:400 clamp(44px,10vw,96px)/1 "Anton",Impact,sans-serif;color:#ff3fae;background:#0b0a0c;padding:4px 14px;text-transform:uppercase;text-shadow:0 0 18px rgba(255,63,174,.6)}
+.sub{max-width:56ch;margin:14px 0 24px;font-size:17px}
+
+.score{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin-bottom:24px;background:var(--surface);padding:14px 18px;border-radius:var(--radius);box-shadow:var(--shadow)}
+.score .n{font:900 48px/1 "Bodoni Moda",serif}
+.score .kk .n{font-family:"Anton",Impact,sans-serif;font-weight:400;color:#ff3fae}
+.score .kk{text-align:right}
+.score .mid{text-align:center;font:600 12px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+
+/* the matchup: two halves */
+.match{display:grid;grid-template-columns:1fr 1fr;position:relative;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.half{padding:22px 20px 20px;display:flex;flex-direction:column;gap:12px;min-height:240px}
+.half.pretty{background:#fffafc;color:#161015;padding-right:44px}
+.half.killer{background:#0b0a0c;color:#f2ecf0;padding-left:44px}
+.half .side{font:600 12px "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.12em;opacity:.7}
+.half h3{margin:0;font:900 clamp(26px,5vw,40px)/1.05 "Bodoni Moda",serif;flex:1}
+.half.killer h3{font-family:"Anton",Impact,sans-serif;font-weight:400;text-transform:uppercase;color:#ff3fae}
+.half .tba{opacity:.5;font-style:italic}
+.vsdot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:#f25fc4;color:#161015;font:400 22px "Anton",Impact,sans-serif;box-shadow:0 0 0 5px var(--ground)}
+.play{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;font:600 13px "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.08em;padding:10px 14px;border-radius:999px;border:1.5px solid currentColor;background:none;color:inherit;cursor:pointer}
+.play[disabled]{opacity:.45;cursor:default}
+.play .ic{width:0;height:0;border-left:10px solid currentColor;border-top:6px solid transparent;border-bottom:6px solid transparent}
+.play.on .ic{width:10px;height:12px;border:0;border-left:3px solid currentColor;border-right:3px solid currentColor}
+.vote{font:600 15px "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.1em;padding:14px;border:0;cursor:pointer;border-radius:3px}
+.pretty .vote{background:#f25fc4;color:#161015}
+.killer .vote{background:#ff3fae;color:#0a0a0a;border-radius:0}
+.vote[disabled]{opacity:.5;cursor:default}
+.res{display:flex;flex-direction:column;gap:6px}
+.res .meter{display:block;height:10px;background:rgba(127,127,127,.25);border-radius:5px;overflow:hidden}
+.res .meter i{display:block;height:100%;background:#f25fc4}
+.killer .res .meter i{background:#ff3fae}
+.res b{font:600 22px "IBM Plex Mono",monospace}
+.mine{font:600 12px "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.1em;color:#f25fc4}
+.killer .mine{color:#ff3fae}
+.when{margin:12px 0 0;font:600 13px var(--mono);color:var(--muted)}
+
+h2{margin:40px 0 12px;font:900 28px/1.1 var(--display)}
+[data-side="killer"] h2{font-weight:400;text-transform:uppercase}
+.rounds{display:flex;flex-direction:column;gap:8px}
+.round{display:grid;grid-template-columns:auto 1fr auto 1fr;align-items:center;gap:12px;background:var(--surface);padding:12px 16px;border-radius:var(--radius);font-size:15px}
+.round .no{font:600 12px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.round .a{text-align:right}
+.round .w{font-weight:800;color:var(--accent)}
+.round .x{font:600 12px var(--mono);color:var(--muted)}
+.round.next{opacity:.6}
+.empty{text-align:center;padding:40px 16px;background:var(--surface);border:1.5px dashed var(--line);border-radius:var(--radius)}
+.empty b{display:block;font:900 30px/1.1 var(--display);margin-bottom:6px}
+[data-side="killer"] .empty b{font-weight:400;text-transform:uppercase;color:var(--accent)}
+.crown{text-align:center;padding:28px 16px;margin-bottom:24px;border-radius:var(--radius);box-shadow:var(--shadow)}
+.crown.pretty{background:#fffafc;color:#161015}
+.crown.killer{background:#0b0a0c;color:#ff3fae}
+.crown b{display:block;font:900 clamp(32px,7vw,56px)/1.05 "Bodoni Moda",serif}
+.crown.killer b{font-family:"Anton",Impact,sans-serif;font-weight:400;text-transform:uppercase}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--ground);padding:10px 18px;border-radius:var(--radius);font-weight:600;font-size:14px}
+@media (max-width:600px){
+  .match{grid-template-columns:1fr}
+  .vsdot{display:none}
+  .half,.half.pretty,.half.killer{min-height:0;padding:20px}
+  .round{grid-template-columns:1fr;gap:2px;text-align:left}
+  .round .a{text-align:left}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="bar"><div class="brand"><b>Finn Shapiro</b></div><span class="label">Pretty Killer Tour</span></header>
+
+  <div class="title" aria-label="Pretty versus Killer"><span class="p">Pretty</span><span class="vs">vs</span><span class="k">Killer</span></div>
+  <p class="sub">One Pretty song and one Killer song go head-to-head every day. Listen to both snippets and vote for your favorite. The side that wins the most days takes the crown.</p>
+
+  <div id="crown"></div>
+  <div class="score" id="score"></div>
+  <section id="today"></section>
+
+  <h2 id="pastHead" hidden>Past battles</h2>
+  <div class="rounds" id="past"></div>
+  <h2 id="nextHead" hidden>Coming up</h2>
+  <div class="rounds" id="next"></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<audio id="snip" preload="none"></audio>
+
+<script>
+/* =====================================================================
+   THE BATTLE
+   START:   when round 1 begins (Eastern time). Empty = "starts soon".
+            Each round lasts one day; round 2 starts 24 hours after round 1, and so on.
+   Songs come from the tracklist (edited on the admin page): round 1 is Pretty song 1
+   vs Killer song 1, round 2 is song 2 vs song 2, and so on. A round with a song still
+   "To be announced" is skipped.
+   Snippets: media/battle/<song-name>.mp3 (lowercase with dashes, like anne.mp3).
+   A song without a snippet says "Snippet coming soon".
+   ===================================================================== */
+const START = "";             // e.g. "2026-11-10T12:00:00-05:00"
+const ROUNDS = 15;
+const DAY = 24 * 60 * 60 * 1000;
+const SNIPPET_MAX = 15;       // seconds: stops there even if the file is longer
+
+const FIREBASE = {
+  apiKey: "AIzaSyDwUNNHtLV-SBcfA00O5lSNW9QlBHR8RKI",
+  authDomain: "finn-pretty-killer-tix.firebaseapp.com",
+  projectId: "finn-pretty-killer-tix",
+  storageBucket: "finn-pretty-killer-tix.firebasestorage.app",
+  messagingSenderId: "766285108634",
+  appId: "1:766285108634:web:319555acceba99326b5623"
+};
+
+const $ = s => document.querySelector(s);
+const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[c]);
+const slug = n => String(n).toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+};
+let toastTimer;
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2400); }
+
+let db = null, tracks = { pretty:[], killer:[] }, votes = {};   // votes[round] = { pretty:n, killer:n }
+const myVotes = store.get("pk-battle-votes", {});                // round -> "pretty" / "killer" (this device)
+const hasSnip = {};                                               // file -> true / false
+
+/* ---------- rounds ---------- */
+const startAt = START ? new Date(START).getTime() : null;
+function roundInfo(r){   // r = 1..ROUNDS
+  const a = (tracks.pretty[r - 1] || "").trim(), b = (tracks.killer[r - 1] || "").trim();
+  const opens = startAt + (r - 1) * DAY, closes = opens + DAY, now = Date.now();
+  const v = votes[r] || { pretty:0, killer:0 }, total = v.pretty + v.killer;
+  const state = !startAt || now < opens ? "next" : now < closes ? "now" : "done";
+  const winner = state !== "done" || !a || !b || v.pretty === v.killer ? null : v.pretty > v.killer ? "pretty" : "killer";
+  return { r, a, b, opens, closes, state, v, total, winner, ready: !!(a && b) };
+}
+const allRounds = () => Array.from({ length: ROUNDS }, (_, i) => roundInfo(i + 1));
+
+/* ---------- render ---------- */
+const pct = (n, t) => t ? Math.round(n / t * 100) : 0;
+const when = t => new Date(t).toLocaleString([], { weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
+function left(ms){ const h = Math.floor(ms / 3600000), m = Math.floor(ms % 3600000 / 60000); return h ? `${h}h ${m}m` : `${m}m`; }
+function half(info, side){
+  const name = side === "pretty" ? info.a : info.b, file = name ? `media/battle/${slug(name)}.mp3` : "";
+  const voted = myVotes[info.r], showRes = !!voted || info.state === "done", v = info.v[side];
+  const snip = hasSnip[file];
+  return `<div class="half ${side}">
+    <span class="side">${side === "pretty" ? "Pretty · AM" : "Killer · PM"}</span>
+    <h3>${name ? esc(name) : `<span class="tba">To be announced</span>`}</h3>
+    ${name ? `<button class="play" type="button" data-play="${esc(file)}" ${snip ? "" : "disabled"}><span class="ic" aria-hidden="true"></span>${snip ? "Play snippet" : snip === false ? "Snippet coming soon" : "Loading…"}</button>` : ""}
+    ${showRes
+      ? `<div class="res"><b>${pct(v, info.total)}%</b><span class="meter"><i style="width:${pct(v, info.total)}%"></i></span>${voted === side ? `<span class="mine">Your vote</span>` : ""}</div>`
+      : `<button class="vote" type="button" data-vote="${side}" data-round="${info.r}" ${info.ready && info.state === "now" ? "" : "disabled"}>Vote ${side === "pretty" ? "Pretty" : "Killer"}</button>`}
+  </div>`;
+}
+function render(){
+  const rs = allRounds(), now = rs.find(x => x.state === "now"), done = rs.filter(x => x.state === "done"), next = rs.filter(x => x.state === "next");
+  const pWins = done.filter(x => x.winner === "pretty").length, kWins = done.filter(x => x.winner === "killer").length;
+  $("#score").innerHTML = `<div><span class="label">Pretty</span><div class="n">${pWins}</div></div>
+    <div class="mid">${startAt ? (now ? `Round ${now.r} of ${ROUNDS}` : next.length ? "Next round soon" : "Final score") : "Days won"}</div>
+    <div class="kk"><span class="label">Killer</span><div class="n">${kWins}</div></div>`;
+
+  // over: crown the side that won more days
+  const over = startAt && !now && !next.length;
+  $("#crown").innerHTML = over ? (pWins === kWins
+    ? `<div class="crown pretty"><span class="label">It's a tie</span><b>${pWins}–${kWins}</b></div>`
+    : `<div class="crown ${pWins > kWins ? "pretty" : "killer"}"><span class="label">The winner is</span><b>${pWins > kWins ? "Pretty" : "Killer"}</b><span>${Math.max(pWins, kWins)}–${Math.min(pWins, kWins)}</span></div>`) : "";
+
+  if (!startAt){
+    $("#today").innerHTML = `<div class="empty"><b>The battle starts soon</b><span>${ROUNDS} days, ${ROUNDS} matchups. Check back to vote.</span></div>`;
+  } else if (now){
+    $("#today").innerHTML = `<span class="label">Today's battle · Round ${now.r}</span>
+      <div class="match" style="margin-top:10px">${half(now, "pretty")}${half(now, "killer")}<span class="vsdot" aria-hidden="true">VS</span></div>
+      <p class="when">${now.ready ? `Voting closes in ${left(now.closes - Date.now())}` : "This round's songs are still a secret."}${myVotes[now.r] ? " · Thanks for voting!" : ""}</p>`;
+  } else {
+    $("#today").innerHTML = next.length ? `<div class="empty"><b>Next battle soon</b><span>Round ${next[0].r} opens ${when(next[0].opens)}.</span></div>` : "";
+  }
+
+  $("#pastHead").hidden = !done.length;
+  $("#past").innerHTML = done.slice().reverse().map(x => `<div class="round">
+      <span class="no">Round ${x.r}</span>
+      <span class="a ${x.winner === "pretty" ? "w" : ""}">${esc(x.a || "—")} · ${pct(x.v.pretty, x.total)}%</span>
+      <span class="x">vs</span>
+      <span class="${x.winner === "killer" ? "w" : ""}">${esc(x.b || "—")} · ${pct(x.v.killer, x.total)}%${x.ready && !x.winner ? " (tie)" : ""}</span></div>`).join("");
+  // upcoming rounds keep their songs secret
+  const upcoming = startAt ? next.slice(0, 3) : [];
+  $("#nextHead").hidden = !upcoming.length;
+  $("#next").innerHTML = upcoming.map(x => `<div class="round next"><span class="no">Round ${x.r}</span><span class="a">?</span><span class="x">vs</span><span>?</span></div>`).join("")
+    + (startAt && next.length > 3 ? `<p class="label">+ ${next.length - 3} more</p>` : "");
+}
+
+/* ---------- snippets ---------- */
+const au = $("#snip");
+async function checkSnips(){
+  const files = allRounds().filter(x => x.state === "now").flatMap(x => [x.a, x.b]).filter(Boolean).map(n => `media/battle/${slug(n)}.mp3`);
+  await Promise.all(files.filter(f => !(f in hasSnip)).map(async f => {
+    try { const r = await fetch(f, { method:"HEAD", cache:"no-store" }); hasSnip[f] = r.ok; } catch(e){ hasSnip[f] = false; }
+  }));
+  render();
+}
+function stopSnip(){ au.pause(); document.querySelectorAll(".play.on").forEach(b => { b.classList.remove("on"); b.lastChild.textContent = "Play snippet"; }); }
+au.addEventListener("timeupdate", () => { if (au.currentTime >= SNIPPET_MAX) stopSnip(); });
+au.addEventListener("ended", stopSnip);
+document.addEventListener("click", async e => {
+  const p = e.target.closest("[data-play]");
+  if (p){
+    const on = p.classList.contains("on"); stopSnip();
+    if (on) return;
+    if (au.dataset.file !== p.dataset.play){ au.dataset.file = p.dataset.play; au.src = p.dataset.play; }
+    au.currentTime = 0;
+    try { await au.play(); p.classList.add("on"); p.lastChild.textContent = "Pause"; } catch(err){ toast("The snippet didn't play. Try again."); }
+    return;
+  }
+  const v = e.target.closest("[data-vote]");
+  if (v){
+    const r = +v.dataset.round, side = v.dataset.vote;
+    if (myVotes[r]) return;
+    v.disabled = true;
+    try {
+      await db.collection("battleVotes").add({ round:r, pick:side, createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+      myVotes[r] = side; store.set("pk-battle-votes", myVotes); render();
+    } catch(err){ v.disabled = false; toast("Your vote didn't go through. Try again."); }
+  }
+});
+
+/* ---------- data ---------- */
+function loadScript(src){
+  return new Promise((res, rej) => { const el = document.createElement("script"); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); });
+}
+(async function boot(){
+  document.documentElement.dataset.side = new Date().getHours() < 12 ? "pretty" : "killer";
+  render();
+  try {
+    const base = "https://www.gstatic.com/firebasejs/10.12.2/";
+    await loadScript(base + "firebase-app-compat.js");
+    await loadScript(base + "firebase-firestore-compat.js");
+    firebase.initializeApp(FIREBASE);
+    db = firebase.firestore();
+    db.collection("tracklist").doc("prettykiller").onSnapshot(d => {
+      const t = d.exists ? d.data() : {};
+      tracks = { pretty: t.pretty || [], killer: t.killer || [] };
+      checkSnips();
+    });
+    db.collection("battleVotes").onSnapshot(snap => {
+      votes = {};
+      snap.docs.forEach(d => { const x = d.data(); (votes[x.round] ||= { pretty:0, killer:0 })[x.pick]++; });
+      render();
+    });
+  } catch(e){ toast("The battle didn't load. Check your connection and reload."); }
+  // move on to the next round when the day changes
+  setInterval(() => { if (!document.querySelector(".play.on")) checkSnips(); }, 60000);
+})();
+</script>
+</body>
+</html>
