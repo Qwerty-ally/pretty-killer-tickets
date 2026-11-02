@@ -36,6 +36,13 @@ h1{margin:10px 0 0;font:900 clamp(44px,12vw,72px)/.95 var(--display)}
 [data-side="killer"] .script{font:600 18px/1.4 "IBM Plex Mono",monospace;letter-spacing:.16em;text-transform:uppercase}
 p{margin:18px 0 0}
 .prize{margin-top:20px;padding:14px 16px;border:2px dashed var(--accent);font-weight:800}
+.gift{margin-top:22px;padding:18px 16px;background:var(--ground);display:flex;flex-direction:column;align-items:center;gap:12px}
+.gift .label{font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.gift b{font:900 30px/1.1 var(--display)}
+[data-side="killer"] .gift b{font-weight:400;text-transform:uppercase;color:var(--accent)}
+.dl{display:inline-flex;align-items:center;gap:8px;padding:14px 22px;background:var(--accent);color:#161015;text-decoration:none;font:600 15px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+[data-side="pretty"] .dl{border-radius:3px}
+[data-side="killer"] .dl{color:#0a0a0a}
 .stamp{margin-top:22px;font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.trophy{animation:none}canvas{display:none}}
 </style>
@@ -47,16 +54,25 @@ p{margin:18px 0 0}
   <span class="eyebrow" id="show"></span>
   <h1>You cheered the loudest!</h1>
   <span class="script" id="tag"></span>
-  <p>Finn heard you. Thank you for bringing the energy to the Pretty Killer Tour.</p>
+  <p>Finn heard you. Thank you for bringing the energy to the Pretty Killer Tour. Here's a song just for you.</p>
+  <div class="gift" id="gift" hidden>
+    <span class="label">Your prize · an exclusive song</span>
+    <b id="songName"></b>
+    <a class="dl" id="dl" download hidden>⬇ Download the song</a>
+    <span id="soon" hidden>Your song is on its way. Keep this page and check back soon.</span>
+  </div>
   <div class="prize" id="prize" hidden></div>
   <div class="stamp" id="stamp"></div>
 </main>
 <script>
 /* =====================================================================
    SIDE:  "pretty" (morning show) or "killer" (night show)
-   PRIZE: what they win, or "" to leave it out. e.g. "Show this at the merch stand for a free poster"
+   SONG:  the exclusive song they can download (name + file), or null for none.
+          Until the file is there, the page says the song is coming soon.
+   PRIZE: an extra prize line, or "" to leave it out. e.g. "Show this at the merch stand for a free poster"
    ===================================================================== */
 const SIDE = "pretty";
+const SONG = { name:"", file:"media/prize-14b8a717/song.mp3" };   // a song that is NOT on the tour; name "" = "Exclusive song"
 const PRIZE = "";
 
 const $ = s => document.querySelector(s);
@@ -65,6 +81,14 @@ document.documentElement.dataset.side = SIDE;
 $("#show").textContent = pretty ? "Pretty show · Loudest cheer" : "Killer show · Loudest cheer";
 $("#tag").textContent = pretty ? "the morning set" : "The night set";
 $("#stamp").textContent = `Finn Shapiro · Pretty Killer Tour · ${new Date().toLocaleDateString([], { month:"long", day:"numeric", year:"numeric" })}`;
+if (SONG){
+  const name = SONG.name || "Exclusive song";
+  $("#songName").textContent = name;
+  $("#dl").href = SONG.file; $("#dl").download = `Finn Shapiro - ${name}.mp3`;
+  $("#gift").hidden = false;
+  fetch(SONG.file, { method:"HEAD", cache:"no-store" }).then(r => r.ok).catch(() => false)
+    .then(ok => { $("#dl").hidden = !ok; $("#soon").hidden = ok; });
+}
 if (PRIZE){ $("#prize").textContent = PRIZE; $("#prize").hidden = false; }
 
 // confetti in the side's colors

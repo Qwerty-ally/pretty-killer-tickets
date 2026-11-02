@@ -55,4 +55,5 @@ The seat layout is `LAYOUT` near the top of the script in `index.html`. Each are
 
 - Two hidden pages (not linked anywhere), one per show: `loudest-pretty-14b8a717.html` (morning) and `loudest-killer-81492493.html` (night). The random part of the name keeps people from guessing them. Each says "You cheered the loudest!" with confetti in that side's colors and the date it was opened.
 - The admin page has a **Loudest cheer · Pretty** and a **Loudest cheer · Killer** card with each page's QR code (and a download). Show it to whoever cheered the loudest.
+- **Prize:** an exclusive song download (a song that isn't on the tour). Put it at `media/prize-14b8a717/song.mp3` (Pretty) and `media/prize-81492493/song.mp3` (Killer), and set its name in `SONG` at the top of each page. Until the file is there, the page says the song is on its way.
 - To add a prize line (like "Show this at the merch stand for a free poster"), set `PRIZE` at the top of each page's script.
