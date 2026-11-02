@@ -822,7 +822,7 @@ const Store = {
   },
   async setLive(v){
     if (!fb){ try { localStorage.setItem("pk-live", JSON.stringify({ ...v, startedAt: Date.now() })); } catch(e){} Demo.notify(); return; }
-    await this.adminWrite(b => b.set(fb.db.collection("live").doc("prettykiller"), { side: v.side, index: Math.max(0, Math.round(+v.index || 0)), pos: Math.max(0, +v.pos || 0), on: !!v.on, playing: !!v.playing, dur: Math.max(0, +v.dur || 0), startedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+    await this.adminWrite(b => b.set(fb.db.collection("live").doc("prettykiller"), { side: v.side, index: Math.max(-1, Math.round(+v.index || 0)), pos: Math.max(0, +v.pos || 0), on: !!v.on, playing: !!v.playing, dur: Math.max(0, +v.dur || 0), startedAt: firebase.firestore.FieldValue.serverTimestamp() }));
   },
   // ---- guestbook: { name, message, createdAt, approved }
   watchGuestbook(cb, everything){
