@@ -56,6 +56,9 @@ h1{margin:4px 0 14px;font:900 clamp(40px,10vw,64px)/.95 var(--display)}
 .stage.tall{aspect-ratio:600/2040;width:auto;height:min(82vh,960px);margin:0 auto}
 .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .4s}
 .flash.on{opacity:1;transition:none}
+/* screen light: the whole screen turns white while a selfie is taken, to light up faces in a dark room */
+.light{position:fixed;inset:0;z-index:100;background:#fff;opacity:0;pointer-events:none;transition:opacity .3s}
+.light.on{opacity:1;transition:none}
 .msg{position:absolute;inset:13.33% 5.56% 18.6%;display:grid;place-items:center;text-align:center;padding:16px;color:#f2ecf0;font-size:15px}
 .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .btn{flex:1 1 auto;display:inline-flex;justify-content:center;align-items:center;gap:6px;font:600 14px var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);padding:14px 16px;background:var(--accent);color:var(--accent-ink);border:0;border-radius:var(--radius);cursor:pointer;text-decoration:none}
@@ -103,7 +106,7 @@ footer a{color:inherit}
     <button class="btn" type="button" id="share" hidden>Share</button>
     <button class="btn ghost" type="button" id="retake" hidden>Retake</button>
   </div>
-  <p class="hint">Your photo stays on your phone. Nothing gets uploaded.</p>
+  <p class="hint">Your photo stays on your phone. Nothing gets uploaded.<span id="res"></span></p>
 
   <footer>
     <a href="./">Tickets</a>
@@ -111,6 +114,7 @@ footer a{color:inherit}
     <a href="https://qwerty-ally.github.io/pretty-killer-shop/">Shop</a>
   </footer>
 </div>
+<div class="light" id="light" aria-hidden="true"></div>
 
 <script>
 const $ = s => document.querySelector(s);
@@ -181,7 +185,10 @@ function compose(){
     const scale = Math.max(h.w / src.w, h.h / src.h), dw = src.w * scale, dh = src.h * scale;
     ctx.save(); ctx.beginPath(); ctx.rect(h.x, h.y, h.w, h.h); ctx.clip();
     if (src.mirror){ ctx.translate(h.x * 2 + h.w, 0); ctx.scale(-1, 1); }
+    // camera shots: smooth out a little grain and add a touch of contrast and color (browsers without canvas filters skip this)
+    if (src.cam && "filter" in ctx) ctx.filter = "blur(0.8px) contrast(1.06) saturate(1.08) brightness(1.03)";
     ctx.drawImage(src.el, h.x + (h.w - dw) / 2, h.y + (h.h - dh) / 2, dw, dh);
+    ctx.filter = "none";
     ctx.restore();
   });
   drawFrame(ctx, frame, L);
@@ -207,6 +214,7 @@ async function startCam(){
     const v = $("#cam"); v.srcObject = stream; v.classList.toggle("back", facing !== "user");
     await v.play().catch(() => {});
     $("#msg").hidden = true; setButtons("live");
+    $("#res").textContent = v.videoWidth ? ` Camera: ${v.videoWidth}×${v.videoHeight}.` : "";
   } catch(e){
     $("#msg").textContent = "The camera didn't open. Allow camera access, or tap Use a photo.";
     setButtons("idle");
@@ -229,7 +237,15 @@ async function countdown(){
   const cnt = $("#count"); cnt.hidden = false;
   for (const n of [3, 2, 1]){ cnt.textContent = n; await wait(800); }
   cnt.hidden = true;
+}
+// selfies: light the screen white so the camera gets more light (less grain), then take the picture
+async function capture(){
+  const front = facing === "user", light = $("#light");
+  if (front){ light.classList.add("on"); await wait(450); }   // give the camera a moment to adjust to the light
+  const shot = await grab();
+  light.classList.remove("on");
   const f = $("#flash"); f.classList.add("on"); setTimeout(() => f.classList.remove("on"), 60);
+  return shot;
 }
 async function grab(){
   const mirror = facing === "user";
@@ -238,13 +254,13 @@ async function grab(){
       const bmp = await createImageBitmap(await new ImageCapture(stream.getVideoTracks()[0]).takePhoto());
       const v = $("#cam");
       // use it only if it's the same way up as the preview (some phones return stills sideways)
-      if (bmp.width && (bmp.width > bmp.height) === (v.videoWidth > v.videoHeight)) return { el:bmp, w:bmp.width, h:bmp.height, mirror };
+      if (bmp.width && (bmp.width > bmp.height) === (v.videoWidth > v.videoHeight)) return { el:bmp, w:bmp.width, h:bmp.height, mirror, cam:true };
     }
   } catch(e){}
   const v = $("#cam"), still = document.createElement("canvas");
   still.width = v.videoWidth; still.height = v.videoHeight;
   still.getContext("2d").drawImage(v, 0, 0);
-  return { el:still, w:still.width, h:still.height, mirror:facing === "user" };
+  return { el:still, w:still.width, h:still.height, mirror, cam:true };
 }
 async function snap(){
   if (!$("#cam").videoWidth) return;
@@ -254,7 +270,7 @@ async function snap(){
   for (let i = 0; i < n; i++){
     if (n > 1){ $("#shotNo").textContent = `Photo ${i + 1} of ${n}`; $("#shotNo").hidden = false; }
     await countdown();
-    shots.push(await grab());
+    shots.push(await capture());
     if (i < n - 1) await wait(700);   // a moment to change poses
   }
   stopCam(); $("#cam").srcObject = null;
