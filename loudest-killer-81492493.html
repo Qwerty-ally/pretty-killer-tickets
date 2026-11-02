@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" data-side="killer">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Loudest Cheer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Bodoni+Moda:wght@700;900&family=Special+Elite&family=IBM+Plex+Mono:wght@400;600&family=Karla:wght@400;600;800&family=Yellowtail&display=swap">
+<style>
+/* Loudest cheer prize page. The Pretty and Killer versions are the same file with SIDE changed. */
+:root{
+  --ground:#f8d2e1; --surface:#fffafc; --ink:#161015; --muted:#8e5a73; --accent:#f25fc4;
+  --display:"Bodoni Moda",Georgia,serif; --mono:"Special Elite","Courier New",monospace;
+  color-scheme:light;
+}
+:root[data-side="killer"]{
+  --ground:#09080a; --surface:#141216; --ink:#f2ecf0; --muted:#8c8390; --accent:#ff3fae;
+  --display:"Anton",Impact,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{background:var(--ground);color:var(--ink);font:17px/1.5 "Karla",system-ui,sans-serif;display:grid;place-items:center;overflow:hidden}
+canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+.card{position:relative;z-index:1;width:min(520px,calc(100% - 32px));text-align:center;background:var(--surface);padding:36px 24px 30px;box-shadow:0 24px 40px -18px rgba(120,30,75,.5)}
+[data-side="killer"] .card{box-shadow:8px 8px 0 #ff3fae;border:1px solid #2c272f}
+.trophy{font-size:72px;line-height:1;display:block;animation:pop .8s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes pop{from{transform:scale(0) rotate(-20deg)}to{transform:none}}
+.eyebrow{display:block;margin-top:14px;font:600 13px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+h1{margin:10px 0 0;font:900 clamp(44px,12vw,72px)/.95 var(--display)}
+[data-side="killer"] h1{font-weight:400;text-transform:uppercase;color:var(--accent);text-shadow:0 0 22px rgba(255,63,174,.55)}
+.script{display:block;margin-top:6px;font:40px/1.1 "Yellowtail",cursive;color:var(--accent)}
+[data-side="killer"] .script{font:600 18px/1.4 "IBM Plex Mono",monospace;letter-spacing:.16em;text-transform:uppercase}
+p{margin:18px 0 0}
+.prize{margin-top:20px;padding:14px 16px;border:2px dashed var(--accent);font-weight:800}
+.stamp{margin-top:22px;font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.trophy{animation:none}canvas{display:none}}
+</style>
+</head>
+<body>
+<canvas id="confetti" aria-hidden="true"></canvas>
+<main class="card">
+  <span class="trophy" aria-hidden="true">🏆</span>
+  <span class="eyebrow" id="show"></span>
+  <h1>You cheered the loudest!</h1>
+  <span class="script" id="tag"></span>
+  <p>Finn heard you. Thank you for bringing the energy to the Pretty Killer Tour.</p>
+  <div class="prize" id="prize" hidden></div>
+  <div class="stamp" id="stamp"></div>
+</main>
+<script>
+/* =====================================================================
+   SIDE:  "pretty" (morning show) or "killer" (night show)
+   PRIZE: what they win, or "" to leave it out. e.g. "Show this at the merch stand for a free poster"
+   ===================================================================== */
+const SIDE = "killer";
+const PRIZE = "";
+
+const $ = s => document.querySelector(s);
+const pretty = SIDE === "pretty";
+document.documentElement.dataset.side = SIDE;
+$("#show").textContent = pretty ? "Pretty show · Loudest cheer" : "Killer show · Loudest cheer";
+$("#tag").textContent = pretty ? "the morning set" : "The night set";
+$("#stamp").textContent = `Finn Shapiro · Pretty Killer Tour · ${new Date().toLocaleDateString([], { month:"long", day:"numeric", year:"numeric" })}`;
+if (PRIZE){ $("#prize").textContent = PRIZE; $("#prize").hidden = false; }
+
+// confetti in the side's colors
+const cv = $("#confetti"), ctx = cv.getContext("2d");
+const colors = pretty ? ["#f25fc4", "#f7b8d4", "#161015", "#fffafc", "#ee9fbf"] : ["#ff3fae", "#ff7fd0", "#f2ecf0", "#8c8390"];
+let bits = [], W, H;
+function size(){ W = cv.width = innerWidth * devicePixelRatio; H = cv.height = innerHeight * devicePixelRatio; }
+size(); addEventListener("resize", size);
+function burst(n){
+  for (let i = 0; i < n; i++) bits.push({ x: Math.random() * W, y: -20 - Math.random() * H * .5, vx: (Math.random() - .5) * 3, vy: 2 + Math.random() * 4,
+    r: (4 + Math.random() * 6) * devicePixelRatio, a: Math.random() * 6, va: (Math.random() - .5) * .3, c: colors[i % colors.length] });
+}
+function tick(){
+  ctx.clearRect(0, 0, W, H);
+  bits.forEach(b => { b.x += b.vx; b.y += b.vy * devicePixelRatio; b.a += b.va;
+    ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.a); ctx.fillStyle = b.c; ctx.fillRect(-b.r / 2, -b.r / 4, b.r, b.r / 2); ctx.restore(); });
+  bits = bits.filter(b => b.y < H + 40);
+  if (bits.length) requestAnimationFrame(tick);
+}
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches){ burst(180); tick(); setTimeout(() => { burst(120); if (bits.length === 120) tick(); }, 1800); }
+</script>
+</body>
+</html>

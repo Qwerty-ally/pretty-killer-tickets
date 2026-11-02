@@ -50,3 +50,9 @@ The seat layout is `LAYOUT` near the top of the script in `index.html`. Each are
 - Set `START` at the top of its script to start the battle (each round lasts 24 hours). Empty = "The battle starts soon".
 - Snippets go in `media/battle/`, named after the song in lowercase with dashes (`anne.mp3`, `pk.mp3`). Each plays up to 15 seconds. Songs without a file say "Snippet coming soon".
 - Votes are in the `battleVotes` collection (one per device per round).
+
+## Loudest cheer prize pages
+
+- Two hidden pages (not linked anywhere), one per show: `loudest-pretty-14b8a717.html` (morning) and `loudest-killer-81492493.html` (night). The random part of the name keeps people from guessing them. Each says "You cheered the loudest!" with confetti in that side's colors and the date it was opened.
+- The admin page has a **Loudest cheer · Pretty** and a **Loudest cheer · Killer** card with each page's QR code (and a download). Show it to whoever cheered the loudest.
+- To add a prize line (like "Show this at the merch stand for a free poster"), set `PRIZE` at the top of each page's script.
