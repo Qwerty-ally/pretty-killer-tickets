@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en" data-side="pretty">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pretty Killer Photo Booth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Bodoni+Moda:wght@700;900&family=Special+Elite&family=IBM+Plex+Mono:wght@400;600&family=Karla:wght@400;600;800&family=Yellowtail&display=swap">
+<style>
+/* same Pretty (AM) / Killer (PM) tokens as the tickets page */
+:root{
+  --ground:#f8d2e1; --surface:#fffafc; --ink:#161015; --muted:#8e5a73;
+  --accent:#f25fc4; --accent-ink:#161015; --line:#e9b1c9;
+  --display:"Bodoni Moda","Didot",Georgia,serif;
+  --body:"Karla",system-ui,sans-serif;
+  --mono:"Special Elite","Courier New",monospace;
+  --radius:3px; --shadow:0 18px 28px -14px rgba(120,30,75,.45);
+  --label-case:none; --label-track:.04em;
+  color-scheme:light;
+}
+:root[data-side="killer"]{
+  --ground:#09080a; --surface:#141216; --ink:#f2ecf0; --muted:#8c8390;
+  --accent:#ff3fae; --accent-ink:#0a0a0a; --line:#2c272f;
+  --display:"Anton","Impact",sans-serif;
+  --body:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --radius:0px; --shadow:6px 6px 0 0 #ff3fae;
+  --label-case:uppercase; --label-track:.14em;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font:16px/1.5 var(--body);min-height:100vh;transition:background .3s,color .3s}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px 48px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0}
+.brand{color:var(--ink);text-decoration:none;display:flex;flex-direction:column}
+.brand b{font:900 22px/1 var(--display)}
+[data-side="killer"] .brand b{font-weight:400;text-transform:uppercase;letter-spacing:.04em}
+.brand span{font:12px/1.4 var(--mono);color:var(--muted)}
+h1{margin:4px 0 14px;font:900 clamp(40px,10vw,64px)/.95 var(--display)}
+[data-side="killer"] h1{font-weight:400;text-transform:uppercase;color:var(--accent)}
+.frames{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.frames button{font:600 14px var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);padding:12px;border:2px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--radius);cursor:pointer}
+.frames button[data-frame="killer"]{background:#0b0a0c;color:#ff3fae;border-color:#2c272f}
+.frames button[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent)}
+.stage{position:relative;aspect-ratio:4/5;background:#0b0a0c;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.stage video,.stage canvas,.stage img{position:absolute;inset:0;width:100%;height:100%}
+.stage video{object-fit:cover}
+.stage .hole{position:absolute;left:5.56%;top:13.33%;width:88.89%;height:74.07%;overflow:hidden}
+.stage .hole video{transform:scaleX(-1)}
+.stage .hole video.back{transform:none}
+.count{position:absolute;inset:0;display:grid;place-items:center;font:900 140px/1 var(--display);color:#fff;text-shadow:0 4px 24px rgba(0,0,0,.6);pointer-events:none}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .4s}
+.flash.on{opacity:1;transition:none}
+.msg{position:absolute;inset:13.33% 5.56% 18.6%;display:grid;place-items:center;text-align:center;padding:16px;color:#f2ecf0;font-size:15px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.btn{flex:1 1 auto;display:inline-flex;justify-content:center;align-items:center;gap:6px;font:600 14px var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);padding:14px 16px;background:var(--accent);color:var(--accent-ink);border:0;border-radius:var(--radius);cursor:pointer;text-decoration:none}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
+.btn[hidden]{display:none}
+.snap{flex-basis:100%;font-size:18px;padding:18px}
+.hint{font-size:13px;color:var(--muted);margin-top:10px}
+footer{margin-top:28px;font:12px var(--mono);color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
+footer a{color:inherit}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="bar">
+    <a class="brand" href="./"><b>Finn Shapiro</b><span>Pretty Killer Tour · photo booth</span></a>
+  </header>
+  <h1>Photo booth</h1>
+
+  <div class="frames" role="group" aria-label="Frame">
+    <button type="button" data-frame="pretty" aria-pressed="true">Pretty frame</button>
+    <button type="button" data-frame="killer" aria-pressed="false">Killer frame</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="hole"><video id="cam" playsinline muted autoplay></video></div>
+    <img id="shot" alt="Your photo" hidden>
+    <canvas id="overlay" width="1080" height="1350" aria-hidden="true"></canvas>
+    <div class="msg" id="msg">Tap <b>&nbsp;Start camera&nbsp;</b> to begin.</div>
+    <div class="count" id="count" hidden></div>
+    <div class="flash" id="flash"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn snap" type="button" id="start">Start camera</button>
+    <button class="btn snap" type="button" id="snap" hidden>📸 Take photo</button>
+    <button class="btn ghost" type="button" id="flip" hidden>Flip camera</button>
+    <label class="btn ghost" id="uploadBtn">Use a photo<input type="file" accept="image/*" id="upload" hidden></label>
+    <button class="btn" type="button" id="save" hidden>Save photo</button>
+    <button class="btn" type="button" id="share" hidden>Share</button>
+    <button class="btn ghost" type="button" id="retake" hidden>Retake</button>
+  </div>
+  <p class="hint">Your photo stays on your phone. Nothing gets uploaded.</p>
+
+  <footer>
+    <a href="./">Tickets</a>
+    <a href="info.html">Show day info</a>
+    <a href="https://qwerty-ally.github.io/pretty-killer-shop/">Shop</a>
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const W = 1080, H = 1350, HOLE = { x:60, y:180, w:960, h:1000 };   // photo area inside the frame
+let frame = new Date().getHours() < 12 ? "pretty" : "killer";
+let stream = null, facing = "user", photo = null;   // photo = the finished PNG blob
+
+/* ---------- the two frames, drawn on a transparent canvas ---------- */
+function drawFrame(ctx, which){
+  ctx.save();
+  // everything except the photo hole
+  ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.rect(HOLE.x, HOLE.y + HOLE.h, HOLE.w, -HOLE.h); ctx.clip("evenodd");
+  if (which === "pretty"){
+    ctx.fillStyle = "#f8d2e1"; ctx.fillRect(0, 0, W, H);
+    // collage tiles along the edges
+    const cols = ["#f7c4d6", "#ee9fbf", "#fde1ea", "#f4a9c6"];
+    for (let x = 0, i = 0; x < W; x += 90, i++){ ctx.fillStyle = cols[i % 4]; ctx.fillRect(x, 0, 90, 26); ctx.fillStyle = cols[(i + 2) % 4]; ctx.fillRect(x, H - 26, 90, 26); }
+    // ransom-note letters
+    const word = "PRETTY", tilt = [-6, 4, -3, 6, -4, 3];
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    [...word].forEach((ch, i) => {
+      const cx = 540 + (i - 2.5) * 118;
+      ctx.save(); ctx.translate(cx, 104); ctx.rotate(tilt[i] * Math.PI / 180);
+      ctx.fillStyle = i % 2 ? "#161015" : "#fffafc"; ctx.fillRect(-52, -58, 104, 116);
+      ctx.fillStyle = i % 2 ? "#f25fc4" : "#161015";
+      ctx.font = (i % 3 === 1 ? "400 92px 'Special Elite'" : "900 96px 'Bodoni Moda'"); ctx.fillText(ch, 0, 6);
+      ctx.restore();
+    });
+    ctx.fillStyle = "#161015"; ctx.font = "900 46px 'Bodoni Moda'"; ctx.fillText("FINN SHAPIRO", 540, 1236);
+    ctx.fillStyle = "#f25fc4"; ctx.font = "56px 'Yellowtail'"; ctx.fillText("the morning set", 540, 1292);
+    // hearts in the corners
+    const heart = (x, y, s) => { ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.fillStyle = "#f25fc4"; ctx.beginPath(); ctx.moveTo(0, 6); ctx.bezierCurveTo(-14, -6, -6, -18, 0, -9); ctx.bezierCurveTo(6, -18, 14, -6, 0, 6); ctx.fill(); ctx.restore(); };
+    heart(110, 1250, 2.4); heart(970, 1250, 2.4);
+  } else {
+    ctx.fillStyle = "#0b0a0c"; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.shadowColor = "#ff3fae"; ctx.shadowBlur = 30;
+    ctx.fillStyle = "#ff3fae"; ctx.font = "400 150px 'Anton'"; ctx.fillText("KILLER", 540, 96);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#ff3fae"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(250, 168); ctx.lineTo(830, 154); ctx.stroke();
+    ctx.fillStyle = "#f2ecf0"; ctx.font = "600 40px 'IBM Plex Mono'"; ctx.fillText("F I N N   S H A P I R O", 540, 1240);
+    ctx.fillStyle = "#8c8390"; ctx.font = "400 26px 'IBM Plex Mono'"; ctx.fillText("THE NIGHT SET · PRETTY KILLER TOUR", 540, 1296);
+  }
+  ctx.restore();
+  // a thin line around the photo
+  ctx.strokeStyle = which === "pretty" ? "#161015" : "#ff3fae"; ctx.lineWidth = 6;
+  ctx.strokeRect(HOLE.x - 3, HOLE.y - 3, HOLE.w + 6, HOLE.h + 6);
+}
+function drawOverlay(){
+  const ctx = $("#overlay").getContext("2d");
+  ctx.clearRect(0, 0, W, H); drawFrame(ctx, frame);
+}
+
+/* ---------- picture → framed PNG ---------- */
+// source = video or image; draws it cover-cropped into the hole
+function compose(source, sw, sh, mirror){
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+  const scale = Math.max(HOLE.w / sw, HOLE.h / sh), dw = sw * scale, dh = sh * scale;
+  ctx.save(); ctx.beginPath(); ctx.rect(HOLE.x, HOLE.y, HOLE.w, HOLE.h); ctx.clip();
+  if (mirror){ ctx.translate(HOLE.x * 2 + HOLE.w, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(source, HOLE.x + (HOLE.w - dw) / 2, HOLE.y + (HOLE.h - dh) / 2, dw, dh);
+  ctx.restore();
+  drawFrame(ctx, frame);
+  return c;
+}
+let lastSource = null;   // { el, w, h, mirror } so switching frames re-frames the same photo
+function showResult(){
+  const c = compose(lastSource.el, lastSource.w, lastSource.h, lastSource.mirror);
+  c.toBlob(b => {
+    photo = b;
+    const img = $("#shot"); if (img.src) URL.revokeObjectURL(img.src);
+    img.src = URL.createObjectURL(b); img.hidden = false;
+  }, "image/png");
+  $("#overlay").hidden = true; $("#msg").hidden = true;
+  setButtons("result");
+}
+
+/* ---------- camera ---------- */
+async function startCam(){
+  stopCam();
+  $("#msg").hidden = false; $("#msg").textContent = "Starting camera…";
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:facing, width:{ ideal:1920 }, height:{ ideal:1920 } }, audio:false });
+    const v = $("#cam"); v.srcObject = stream; v.classList.toggle("back", facing !== "user");
+    await v.play().catch(() => {});
+    $("#msg").hidden = true; setButtons("live");
+  } catch(e){
+    $("#msg").textContent = "The camera didn't open. Allow camera access, or tap Use a photo.";
+    setButtons("idle");
+  }
+}
+function stopCam(){ if (stream){ stream.getTracks().forEach(t => t.stop()); stream = null; } }
+function setButtons(mode){
+  $("#start").hidden = mode !== "idle";
+  $("#snap").hidden = mode !== "live";
+  $("#flip").hidden = mode !== "live";
+  $("#uploadBtn").hidden = mode === "result";
+  $("#save").hidden = $("#retake").hidden = mode !== "result";
+  $("#share").hidden = mode !== "result" || !navigator.canShare;
+}
+async function snap(){
+  const v = $("#cam"); if (!v.videoWidth) return;
+  $("#snap").disabled = true;
+  const cnt = $("#count"); cnt.hidden = false;
+  for (const n of [3, 2, 1]){ cnt.textContent = n; await new Promise(r => setTimeout(r, 800)); }
+  cnt.hidden = true;
+  const f = $("#flash"); f.classList.add("on"); setTimeout(() => f.classList.remove("on"), 60);
+  // freeze the frame so it can be re-framed later
+  const still = document.createElement("canvas"); still.width = v.videoWidth; still.height = v.videoHeight;
+  still.getContext("2d").drawImage(v, 0, 0);
+  lastSource = { el:still, w:still.width, h:still.height, mirror:facing === "user" };
+  stopCam(); $("#cam").srcObject = null;
+  $("#snap").disabled = false;
+  showResult();
+}
+function retake(){
+  $("#shot").hidden = true; $("#overlay").hidden = false; photo = null; lastSource = null;
+  startCam();
+}
+
+/* ---------- save / share ---------- */
+const fileName = () => `pretty-killer-${frame}-${Date.now()}.png`;
+function save(){
+  if (!photo) return;
+  const a = document.createElement("a"); a.href = URL.createObjectURL(photo); a.download = fileName();
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+async function share(){
+  if (!photo) return;
+  const file = new File([photo], fileName(), { type:"image/png" });
+  if (navigator.canShare && navigator.canShare({ files:[file] })){
+    try { await navigator.share({ files:[file], title:"Pretty Killer Tour" }); } catch(e){}
+  } else save();
+}
+
+/* ---------- wiring ---------- */
+function setFrame(f){
+  frame = f;
+  document.documentElement.dataset.side = f;
+  document.querySelectorAll("[data-frame]").forEach(b => b.setAttribute("aria-pressed", b.dataset.frame === f));
+  drawOverlay();
+  if (lastSource) showResult();
+}
+document.querySelectorAll("[data-frame]").forEach(b => b.addEventListener("click", () => setFrame(b.dataset.frame)));
+$("#start").addEventListener("click", startCam);
+$("#snap").addEventListener("click", snap);
+$("#flip").addEventListener("click", () => { facing = facing === "user" ? "environment" : "user"; startCam(); });
+$("#save").addEventListener("click", save);
+$("#share").addEventListener("click", share);
+$("#retake").addEventListener("click", retake);
+$("#upload").addEventListener("change", e => {
+  const f = e.target.files[0]; if (!f) return;
+  const img = new Image();
+  img.onload = () => { stopCam(); lastSource = { el:img, w:img.naturalWidth, h:img.naturalHeight, mirror:false }; showResult(); };
+  img.src = URL.createObjectURL(f);
+  e.target.value = "";
+});
+
+setButtons("idle");
+setFrame(frame);
+// redraw once the fonts are ready so the frame text uses them
+Promise.all(["900 96px 'Bodoni Moda'", "92px 'Special Elite'", "56px 'Yellowtail'", "150px 'Anton'", "600 40px 'IBM Plex Mono'"].map(f => document.fonts.load(f)))
+  .then(() => { drawOverlay(); if (lastSource) showResult(); }).catch(() => {});
+</script>
+</body>
+</html>

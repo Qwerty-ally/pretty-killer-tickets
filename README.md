@@ -37,3 +37,8 @@ GitHub Pages is turned on for the `main` branch, so the site is live at **https:
 ## Changing the seats
 
 The seat layout is `LAYOUT` near the top of the script in `index.html`. Each area has a name, a box on the map and a list of seat positions. Add or remove a position to change how many people an area holds.
+
+## Show day info and photo booth
+
+- **`info.html`** is the show day page: date, Pretty and Killer show times, address with a Maps link, how tickets work, the seats, the merch stand, what happens during the show and what to bring. Fill in `INFO` at the top of its script (`date`, `pretty`, `killer`, `bring`); anything left empty says "To be announced".
+- **`booth.html`** is the photo booth: pick the **Pretty** or **Killer** frame, start the camera (or use a photo), and it counts down 3, 2, 1, takes the picture and puts the frame on it. **Save photo** downloads it and **Share** opens the phone's share menu. Switching frames after taking the picture re-frames the same photo. Photos never leave the phone.

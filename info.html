@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" data-side="pretty">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pretty Killer Show Day</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Bodoni+Moda:wght@700;900&family=Special+Elite&family=IBM+Plex+Mono:wght@400;600&family=Karla:wght@400;600;800&display=swap">
+<style>
+/* same Pretty (AM) / Killer (PM) tokens as the tickets page */
+:root{
+  --ground:#f8d2e1; --surface:#fffafc; --ink:#161015; --muted:#8e5a73;
+  --accent:#f25fc4; --accent-ink:#161015; --line:#e9b1c9;
+  --display:"Bodoni Moda","Didot",Georgia,serif;
+  --body:"Karla",system-ui,sans-serif;
+  --mono:"Special Elite","Courier New",monospace;
+  --radius:3px; --shadow:0 18px 28px -14px rgba(120,30,75,.45);
+  --label-case:none; --label-track:.04em;
+  color-scheme:light;
+}
+:root[data-side="killer"]{
+  --ground:#09080a; --surface:#141216; --ink:#f2ecf0; --muted:#8c8390;
+  --accent:#ff3fae; --accent-ink:#0a0a0a; --line:#2c272f;
+  --display:"Anton","Impact",sans-serif;
+  --body:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --radius:0px; --shadow:6px 6px 0 0 #ff3fae;
+  --label-case:uppercase; --label-track:.14em;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font:16px/1.55 var(--body);min-height:100vh}
+.wrap{max-width:1000px;margin:0 auto;padding:0 16px 56px}
+a{color:var(--accent)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0;flex-wrap:wrap}
+.brand{color:var(--ink);text-decoration:none;display:flex;flex-direction:column}
+.brand b{font:900 22px/1 var(--display)}
+[data-side="killer"] .brand b{font-weight:400;text-transform:uppercase;letter-spacing:.04em}
+.brand span{font:12px/1.4 var(--mono);color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:6px;font:600 13px var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);padding:10px 16px;background:var(--accent);color:var(--accent-ink);text-decoration:none;border-radius:var(--radius);border:0}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
+.eyebrow{font:600 13px var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);color:var(--accent)}
+h1{margin:10px 0 0;font:900 clamp(56px,12vw,128px)/.9 var(--display)}
+[data-side="killer"] h1{font-weight:400;text-transform:uppercase;color:var(--accent)}
+.lede{max-width:56ch;font-size:18px;margin:20px 0 28px}
+.when{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+.show{background:var(--surface);padding:18px;border-radius:var(--radius);box-shadow:var(--shadow);border-top:5px solid var(--accent)}
+.show.pretty{background:#fffafc;color:#161015;border-top-color:#f25fc4}
+.show.pretty b{font-family:"Bodoni Moda",Georgia,serif;font-weight:900;text-transform:none;color:#161015}
+.show.killer{background:#141216;color:#f2ecf0;border-top-color:#ff3fae}
+.show .label{font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.1em;opacity:.7}
+.show b{display:block;font:900 30px/1.1 var(--display);margin:4px 0}
+.show.killer b{font-family:"Anton",Impact,sans-serif;font-weight:400;text-transform:uppercase;color:#ff3fae}
+.show span{font-size:14px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.card{background:var(--surface);padding:18px 20px;border-radius:var(--radius);box-shadow:var(--shadow)}
+.card h2{margin:0 0 8px;font:900 24px/1.15 var(--display)}
+[data-side="killer"] .card h2{font-weight:400;text-transform:uppercase;letter-spacing:.03em}
+.card ul{margin:0;padding-left:18px}
+.card li{margin:4px 0}
+.card p{margin:0 0 8px}
+.card .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.tba{color:var(--muted);font-style:italic}
+footer{margin-top:32px;font:12px var(--mono);color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="bar">
+    <a class="brand" href="./"><b>Finn Shapiro</b><span>Pretty Killer Tour · show day</span></a>
+    <a class="btn" href="./#mine">My tickets</a>
+  </header>
+
+  <span class="eyebrow">Everything you need to know</span>
+  <h1>Show day</h1>
+  <p class="lede">Two shows, one ticket. The <b>Pretty</b> side is in the morning and the <b>Killer</b> side is at night. Your ticket works for both.</p>
+
+  <div class="when">
+    <div class="show"><span class="label">Date</span><b id="date"></b><span>Pretty Killer Tour</span></div>
+    <div class="show pretty"><span class="label">AM · Morning show</span><b>Pretty</b><span id="pretty"></span></div>
+    <div class="show killer"><span class="label">PM · Night show</span><b>Killer</b><span id="killer"></span></div>
+  </div>
+
+  <div class="cards">
+    <section class="card">
+      <h2>Where</h2>
+      <p><b id="addr"></b></p>
+      <div class="actions"><a class="btn ghost" id="mapLink" target="_blank" rel="noopener">Open in Maps</a></div>
+    </section>
+
+    <section class="card">
+      <h2>Your ticket</h2>
+      <ul>
+        <li>Tickets are free. There are 15 seats.</li>
+        <li>One ticket covers both the Pretty and the Killer show, in the same seat.</li>
+        <li>Your seat is in <b>My tickets</b> on the device you got it on.</li>
+        <li>Can't make one of the shows? Tap <b>Can't make it?</b> in My tickets. You can keep your seat or give it back for someone else.</li>
+      </ul>
+      <div class="actions"><a class="btn" href="./#mine">My tickets</a><a class="btn ghost" href="./">Get a ticket</a></div>
+    </section>
+
+    <section class="card">
+      <h2>Seats</h2>
+      <ul>
+        <li><b>Center</b>: 3 seats facing the stage</li>
+        <li><b>Left Side</b> and <b>Right Side</b>: 4 seats each</li>
+        <li><b>Left Box</b> and <b>Right Box</b>: 1 seat each</li>
+        <li><b>Left Box 2</b> and <b>Right Box 2</b>: 1 seat each</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Merch stand</h2>
+      <ul>
+        <li>Ordered online? Pick it up at the merch stand. Give your <b>name</b> and your <b>order number</b> (like PK-4821).</li>
+        <li>Online orders are pre-orders, so you get them at the show.</li>
+        <li>Only at the stand: the <b>Good Morning Sun Tee</b> (Pretty show) and the <b>Killer Glow Tee</b> (Killer show).</li>
+      </ul>
+      <div class="actions"><a class="btn ghost" href="https://qwerty-ally.github.io/pretty-killer-shop/">Shop</a></div>
+    </section>
+
+    <section class="card">
+      <h2>During the show</h2>
+      <ul>
+        <li>See the songs and vote for the ones you want to hear on the <a href="./#tracklist">tracklist</a>.</li>
+        <li>The <a href="./#guestbook">guestbook</a> opens 50 minutes after each show starts. Leave Finn a message.</li>
+        <li>Take a picture with a Pretty or Killer frame in the <a href="booth.html">photo booth</a>.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Bring</h2>
+      <ul>
+        <li>Your phone, with your ticket in My tickets</li>
+        <li>Your order number if you bought merch</li>
+        <li id="extra" hidden></li>
+      </ul>
+    </section>
+  </div>
+
+  <footer>
+    <a href="./">Tickets</a>
+    <a href="booth.html">Photo booth</a>
+    <a href="https://qwerty-ally.github.io/pretty-killer-shop/">Shop</a>
+    <a href="https://qwerty-ally.github.io/pretty-killer-leaks/">Leaks</a>
+  </footer>
+</div>
+
+<script>
+/* =====================================================================
+   SHOW DAY INFO: fill these in when they're set. Empty = "To be announced".
+   ===================================================================== */
+const INFO = {
+  date:    "",              // e.g. "Saturday, December 12, 2026"
+  pretty:  "",              // morning show, e.g. "Doors 10:30 AM · Show 11:00 AM"
+  killer:  "",              // night show, e.g. "Doors 7:30 PM · Show 8:00 PM"
+  address: "15 Freeman Parkway",
+  bring:   ""               // one more thing to bring, or leave empty
+};
+
+const $ = s => document.querySelector(s);
+const tba = (el, v) => { el.textContent = v || "To be announced"; el.classList.toggle("tba", !v); };
+tba($("#date"), INFO.date);
+tba($("#pretty"), INFO.pretty);
+tba($("#killer"), INFO.killer);
+$("#addr").textContent = INFO.address;
+$("#mapLink").href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(INFO.address);
+if (INFO.bring){ $("#extra").textContent = INFO.bring; $("#extra").hidden = false; }
+document.documentElement.dataset.side = new Date().getHours() < 12 ? "pretty" : "killer";
+</script>
+</body>
+</html>
