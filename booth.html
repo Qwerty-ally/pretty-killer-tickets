@@ -170,9 +170,12 @@ function drawOverlay(){
 }
 
 /* ---------- pictures → framed PNG ---------- */
+// the saved picture is drawn bigger than the layout (2x, or 3x for the narrow strip) so it stays sharp
+const SCALE = { single:2, strip:3 };
 function compose(){
-  const L = LAYOUTS[mode], c = document.createElement("canvas"); c.width = L.W; c.height = L.H;
+  const L = LAYOUTS[mode], k = SCALE[mode], c = document.createElement("canvas"); c.width = L.W * k; c.height = L.H * k;
   const ctx = c.getContext("2d");
+  ctx.scale(k, k); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
   L.holes.forEach((h, i) => {
     const src = shots[i] || shots[shots.length - 1];
     const scale = Math.max(h.w / src.w, h.h / src.h), dw = src.w * scale, dh = src.h * scale;
@@ -189,7 +192,7 @@ function showResult(){
     photo = b;
     const img = $("#shot"); if (img.src) URL.revokeObjectURL(img.src);
     img.src = URL.createObjectURL(b); img.hidden = false;
-  }, "image/png");
+  }, "image/jpeg", .95);
   $("#stage").classList.toggle("tall", mode === "strip");
   $("#overlay").hidden = true; $("#msg").hidden = true; $("#shotNo").hidden = true;
   setButtons("result");
@@ -200,7 +203,7 @@ async function startCam(){
   stopCam();
   $("#msg").hidden = false; $("#msg").textContent = "Starting camera…";
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:facing, width:{ ideal:1920 }, height:{ ideal:1920 } }, audio:false });
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:facing, width:{ ideal:3840 }, height:{ ideal:2160 } }, audio:false });
     const v = $("#cam"); v.srcObject = stream; v.classList.toggle("back", facing !== "user");
     await v.play().catch(() => {});
     $("#msg").hidden = true; setButtons("live");
@@ -228,7 +231,16 @@ async function countdown(){
   cnt.hidden = true;
   const f = $("#flash"); f.classList.add("on"); setTimeout(() => f.classList.remove("on"), 60);
 }
-function grab(){
+async function grab(){
+  const mirror = facing === "user";
+  try {
+    if ("ImageCapture" in window && stream){
+      const bmp = await createImageBitmap(await new ImageCapture(stream.getVideoTracks()[0]).takePhoto());
+      const v = $("#cam");
+      // use it only if it's the same way up as the preview (some phones return stills sideways)
+      if (bmp.width && (bmp.width > bmp.height) === (v.videoWidth > v.videoHeight)) return { el:bmp, w:bmp.width, h:bmp.height, mirror };
+    }
+  } catch(e){}
   const v = $("#cam"), still = document.createElement("canvas");
   still.width = v.videoWidth; still.height = v.videoHeight;
   still.getContext("2d").drawImage(v, 0, 0);
@@ -242,7 +254,7 @@ async function snap(){
   for (let i = 0; i < n; i++){
     if (n > 1){ $("#shotNo").textContent = `Photo ${i + 1} of ${n}`; $("#shotNo").hidden = false; }
     await countdown();
-    shots.push(grab());
+    shots.push(await grab());
     if (i < n - 1) await wait(700);   // a moment to change poses
   }
   stopCam(); $("#cam").srcObject = null;
@@ -256,7 +268,7 @@ function retake(){
 }
 
 /* ---------- save / share ---------- */
-const fileName = () => `pretty-killer-${frame}${mode === "strip" ? "-strip" : ""}-${Date.now()}.png`;
+const fileName = () => `pretty-killer-${frame}${mode === "strip" ? "-strip" : ""}-${Date.now()}.jpg`;
 function save(){
   if (!photo) return;
   const a = document.createElement("a"); a.href = URL.createObjectURL(photo); a.download = fileName();
@@ -264,7 +276,7 @@ function save(){
 }
 async function share(){
   if (!photo) return;
-  const file = new File([photo], fileName(), { type:"image/png" });
+  const file = new File([photo], fileName(), { type:"image/jpeg" });
   if (navigator.canShare && navigator.canShare({ files:[file] })){
     try { await navigator.share({ files:[file], title:"Pretty Killer Tour" }); } catch(e){}
   } else save();
