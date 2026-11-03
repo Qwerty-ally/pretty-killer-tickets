@@ -65,7 +65,7 @@ header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:f
 .hero{position:relative;padding-block:52px 36px}
 .hero > :not(.fx){position:relative}
 .eyebrow{display:inline-block;font:14px/1 var(--mono);padding:6px 10px;background:var(--ink);color:var(--accent);text-transform:var(--label-case);letter-spacing:var(--label-track)}
-.title{margin:12px 0 0;line-height:.9;display:flex;flex-wrap:wrap;gap:.04em;font-size:clamp(64px,14vw,168px)}
+.title{margin:12px 0 0;line-height:.9;display:flex;flex-wrap:wrap;gap:.04em;font-size:clamp(44px,12.5vw,168px)}
 .title .ch{display:inline-block;font-family:var(--f);color:var(--c);background:var(--b);padding:.02em .1em;transform:rotate(var(--r));font-size:var(--s,1em);border:var(--bd,0)}
 [data-side="pretty"] .title .ch{box-shadow:0 6px 14px -6px rgba(90,20,55,.45)}
 .hero p.sub{max-width:50ch;font-size:18px;margin:22px 0 0;background:var(--surface);padding:14px 16px;box-shadow:var(--shadow)}
@@ -149,7 +149,7 @@ h2.sec{font:900 34px/1 var(--display);margin:44px 0 16px}
 .secrow .n{font-weight:800;font-size:14px}
 .secrow .left{font:12px/1 var(--mono);color:var(--muted)}
 .secrow .chips{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}
-.chip{min-width:44px;padding:7px 10px;border-radius:var(--radius);border:1.5px solid var(--accent);background:transparent;cursor:pointer;font:600 13px/1 var(--mono)}
+.chip{min-width:44px;min-height:40px;padding:7px 10px;border-radius:var(--radius);border:1.5px solid var(--accent);background:transparent;cursor:pointer;font:600 13px/1 var(--mono)}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
 .chip:disabled{border-color:var(--line);color:var(--taken-ink);text-decoration:line-through;cursor:not-allowed}
 .soldout{font:13px/1.4 var(--mono);color:var(--muted)}
@@ -298,7 +298,7 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .tl .len{font:12px/1.6 var(--mono);color:var(--muted);margin-left:auto;padding-left:10px}
 .tl li{grid-template-columns:28px minmax(0,1fr) auto;align-items:center}
 .tl li .nm{min-width:0;overflow-wrap:anywhere}
-.vote{background:none;border:1.5px solid currentColor;border-radius:999px;padding:2px 9px;cursor:pointer;font:600 12px/1.4 var(--mono);color:var(--accent);margin-left:8px}
+.vote{background:none;border:1.5px solid currentColor;border-radius:999px;padding:6px 12px;min-width:40px;min-height:36px;cursor:pointer;font:600 14px/1.4 var(--mono);color:var(--accent);margin-left:8px}
 .vote[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .vote:disabled{cursor:default;opacity:.8}
 .vote-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:-36px 0 56px}
@@ -349,6 +349,8 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
   .event .go{grid-column:1/-1}
   .event .go .btn{width:100%}
   .brand span{display:none}
+  /* phones: the page colors already show the side, so the AM/PM pill makes room for My tickets */
+  header.bar .side-pill{display:none}
   .fx.collage{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,1fr)}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
