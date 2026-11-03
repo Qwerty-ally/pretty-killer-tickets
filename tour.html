@@ -58,6 +58,9 @@ h1{margin:6px 0 4px;font:900 clamp(38px,10vw,72px)/.95 var(--display)}
 .choices{display:grid;gap:10px;margin-top:14px}
 .choice{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:12px 16px;border:2px solid var(--line);background:var(--surface);color:var(--ink);font:700 16px var(--body);text-align:left;cursor:pointer;border-radius:var(--radius)}
 .choice .ic{font-size:22px;width:28px;text-align:center}
+.choice kbd{margin-left:auto;min-width:30px;padding:3px 8px;text-align:center;font:700 15px "IBM Plex Mono",monospace;border:1.5px solid var(--line);border-bottom-width:3px;border-radius:6px;color:var(--muted)}
+.keys{margin:8px 0 0;font:600 12px var(--mono);color:var(--muted)}
+@media (hover:none){ .choice kbd,.keys{display:none} }
 .choice:hover{border-color:var(--accent)}
 .choice.no{border-color:#c0392b;opacity:.6}
 .msg{margin-top:10px;font:600 14px var(--mono);color:var(--accent);min-height:1.4em}
@@ -97,18 +100,18 @@ h1{margin:6px 0 4px;font:900 clamp(38px,10vw,72px)/.95 var(--display)}
    ===================================================================== */
 const STEPS = [
   { scene:"hall", title:"You're inside!", text:"Welcome to 15 Freeman Parkway. The show is downstairs. Follow the pink footsteps down the hallway.",
-    choices:[ { ic:"⬆️", t:"Go up the stairs", no:"Not tonight! The show is downstairs." },
-              { ic:"👣", t:"Walk down the hallway", ok:true },
-              { ic:"↩️", t:"Go back outside", no:"You just got here! Keep going." } ] },
+    choices:[ { ic:"⬆️", t:"Go up the stairs", key:"ArrowLeft", no:"Not tonight! The show is downstairs." },
+              { ic:"👣", t:"Walk down the hallway", key:"ArrowUp", ok:true },
+              { ic:"↩️", t:"Go back outside", key:"ArrowDown", no:"You just got here! Keep going." } ] },
   { scene:"door", title:"Find the right door", text:"The door to the stairs is on the left wall of the hallway. The door at the end is the front door.",
-    choices:[ { ic:"⬅️", t:"Open the door on the left wall", ok:true },
-              { ic:"🚪", t:"Open the door at the end of the hall", no:"That's the front door! You'd be back outside." } ] },
+    choices:[ { ic:"⬅️", t:"Open the door on the left wall", key:"ArrowLeft", ok:true },
+              { ic:"🚪", t:"Open the door at the end of the hall", key:"ArrowUp", no:"That's the front door! You'd be back outside." } ] },
   { scene:"stairs", title:"Down the stairs", text:"Hold the railing. The stairs turn at the bottom.",
-    choices:[ { ic:"⬇️", t:"Go down the stairs", ok:true },
-              { ic:"⬆️", t:"Go back up", no:"Wrong way! The show is down there." } ] },
+    choices:[ { ic:"⬇️", t:"Go down the stairs", key:"ArrowDown", ok:true },
+              { ic:"⬆️", t:"Go back up", key:"ArrowUp", no:"Wrong way! The show is down there." } ] },
   { scene:"tiles", title:"The bottom of the stairs", text:"You're on the red tiles. The show room is right in front of you, no door.",
-    choices:[ { ic:"👣", t:"Walk across the tiles into the show room", ok:true },
-              { ic:"⬆️", t:"Go back upstairs", no:"You're almost there! Keep going." } ] },
+    choices:[ { ic:"👣", t:"Walk across the tiles into the show room", key:"ArrowUp", ok:true },
+              { ic:"⬆️", t:"Go back upstairs", key:"ArrowDown", no:"You're almost there! Keep going." } ] },
   { scene:"room", title:"You made it to the show room!", text:"Now find everything. Tap each spot on the map.",
     find:[ { id:"merch", t:"Merch table", say:"The merch table is by the fireplace. Pick up your order here." },
            { id:"stage", t:"Stage", say:"The stage is marked with blue tape on the floor. Don't step on it!" },
@@ -117,6 +120,9 @@ const STEPS = [
 
 const $ = s => document.querySelector(s);
 let step = 0, score = 0, found = [], wrongThisStep = false;
+const KEYS = { ArrowUp:"↑", ArrowDown:"↓", ArrowLeft:"←", ArrowRight:"→" };
+// the show room: you're a pink dot you move with the arrow keys (start at the stairs)
+let me = { x:40, y:262 }, onSpot = null;
 document.documentElement.dataset.side = new Date().getHours() < 12 ? "pretty" : "killer";
 
 /* ---------- scenes (drawn, no photos) ---------- */
@@ -235,6 +241,7 @@ const SCENES = {
     <rect x="0" y="232" width="10" height="50" fill="#a6402e"/>
     <g transform="translate(26 256)"><rect x="-4" y="-12" width="96" height="22" rx="11" fill="#161015" opacity=".75"/><text x="44" y="3" text-anchor="middle" style="font:700 9px 'IBM Plex Mono',monospace" fill="#fff">⬅ FROM THE STAIRS</text></g>
     <g id="marks"></g>
+    <g id="me" transform="translate(40 262)"><circle r="13" fill="#ff3fae" opacity=".3"/><circle r="8" fill="#ff3fae" stroke="#fff" stroke-width="2.5"/></g>
   </svg>`
 };
 
@@ -250,9 +257,10 @@ function show(){
   const s = STEPS[step]; wrongThisStep = false;
   $("#scene").className = "scene";
   $("#scene").innerHTML = SCENES[s.scene]() + (s.find ? "" : `<span class="you">You</span>`);
-  if (s.find){ found = []; renderFind(); return; }
+  if (s.find){ found = []; me = { x:40, y:262 }; onSpot = null; renderFind(); return; }
   $("#card").innerHTML = `<h2>${s.title}</h2><p>${s.text}</p>
-    <div class="choices">${s.choices.map((c, i) => `<button class="choice" type="button" data-c="${i}"><span class="ic" aria-hidden="true">${c.ic}</span>${c.t}</button>`).join("")}</div>
+    <div class="choices">${s.choices.map((c, i) => `<button class="choice" type="button" data-c="${i}"><span class="ic" aria-hidden="true">${c.ic}</span>${c.t}${c.key ? `<kbd aria-label="arrow key">${KEYS[c.key]}</kbd>` : ""}</button>`).join("")}</div>
+    <p class="keys">Use the arrow keys or tap a choice.</p>
     <p class="msg" id="msg" aria-live="polite"></p>`;
 }
 function choose(i, btn){
@@ -272,6 +280,7 @@ function renderFind(){
   const s = STEPS[step], next = s.find.find(f => !found.includes(f.id));
   $("#card").innerHTML = `<h2>${s.title}</h2><p>${next ? `Tap the <b>${next.t.toLowerCase()}</b> on the map.` : "You found everything!"}</p>
     <div class="find">${s.find.map(f => `<span class="${found.includes(f.id) ? "got" : f === next ? "now" : ""}">${found.includes(f.id) ? "✓ " : ""}${f.t}</span>`).join("")}</div>
+    <p class="keys">Walk with the arrow keys, or tap the map.</p>
     <p class="msg" id="msg" aria-live="polite"></p>
     ${next ? "" : `<div class="btns"><button class="btn" type="button" id="done">Finish</button></div>`}`;
   const marks = document.querySelector("#marks");
@@ -305,6 +314,27 @@ document.addEventListener("click", e => {
   const sp = e.target.closest("[data-spot]"); if (sp) return tapSpot(sp.dataset.spot);
   if (e.target.closest("#done")){ step++; show(); }
   if (e.target.closest("#again")){ step = 0; score = 0; show(); }
+});
+function walk(dx, dy){
+  me.x = Math.max(12, Math.min(388, me.x + dx)); me.y = Math.max(52, Math.min(288, me.y + dy));
+  const dot = document.querySelector("#me"); if (dot) dot.setAttribute("transform", `translate(${me.x} ${me.y})`);
+  // stepping onto a spot picks it (once each time you walk onto it)
+  const hit = [...document.querySelectorAll("[data-spot]")].find(g => { const b = g.getBBox(); return me.x > b.x - 6 && me.x < b.x + b.width + 6 && me.y > b.y - 6 && me.y < b.y + b.height + 6; });
+  const id = hit ? hit.dataset.spot : null;
+  if (id && id !== onSpot) tapSpot(id);
+  onSpot = id;
+}
+document.addEventListener("keydown", e => {
+  if (!KEYS[e.key] && e.key !== "Enter") return;
+  if (e.target.closest && e.target.closest("[data-spot]") && e.key === "Enter") return;   // handled below
+  const s = STEPS[step];
+  if (e.key === "Enter"){ const b = document.querySelector("#done, #again"); if (b){ e.preventDefault(); b.click(); } return; }
+  e.preventDefault();
+  if (!s) return;
+  if (s.find){ const d = 14; walk({ ArrowLeft:-d, ArrowRight:d }[e.key] || 0, { ArrowUp:-d, ArrowDown:d }[e.key] || 0); return; }
+  const i = s.choices.findIndex(c => c.key === e.key);
+  const btn = document.querySelector(`[data-c="${i}"]`);
+  if (i >= 0 && btn && !btn.disabled) choose(i, btn);
 });
 document.addEventListener("keydown", e => { const sp = e.target.closest && e.target.closest("[data-spot]"); if (sp && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); tapSpot(sp.dataset.spot); } });
 show();
