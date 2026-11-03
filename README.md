@@ -57,3 +57,7 @@ The seat layout is `LAYOUT` near the top of the script in `index.html`. Each are
 - The admin page has a **Loudest cheer · Pretty** and a **Loudest cheer · Killer** card with each page's QR code (and a download). Show it to whoever cheered the loudest.
 - **Prize:** an exclusive song download (a song that isn't on the tour). Put it at `media/prize-14b8a717/song.mp3` (Pretty) and `media/prize-81492493/song.mp3` (Killer), and set its name in `SONG` at the top of each page. Until the file is there, the page says the song is on its way.
 - To add a prize line (like "Show this at the merch stand for a free poster"), set `PRIZE` at the top of each page's script.
+
+## Tour simulator
+
+`tour.html` (on the hub) is a little game that shows guests the way from the front door to the show room: down the front hallway, through the door at the end, down the stairs, across the red tiles and through the wooden door. Each step has a drawn scene and choices (wrong ones shake and say why). In the show room they tap the merch table (by the fireplace), the stage (blue tape) and the front seating (red bean bag). Edit the route in `STEPS` at the top of its script.
