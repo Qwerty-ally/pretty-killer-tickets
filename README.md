@@ -60,4 +60,4 @@ The seat layout is `LAYOUT` near the top of the script in `index.html`. Each are
 
 ## Tour simulator
 
-`tour.html` (on the hub) is a little game that shows guests the way from the front door to the show room: down the front hallway, through the door at the end, down the stairs, across the red tiles and through the wooden door. Each step has a drawn scene and choices (wrong ones shake and say why). In the show room they tap the merch table (by the fireplace), the stage (blue tape) and the front seating (red bean bag). Edit the route in `STEPS` at the top of its script.
+`tour.html` (on the hub) is a little game that shows guests the way from the front door to the show room: down the front hallway, through the door on the left wall (not the front door at the end), down the stairs, and across the red tiles straight into the show room (no door). Each step has a drawn scene and choices (wrong ones shake and say why). In the show room they tap the merch table (by the fireplace), the stage (blue tape) and the front seating (red bean bag). Edit the route in `STEPS` at the top of its script.
