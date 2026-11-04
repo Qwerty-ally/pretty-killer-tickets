@@ -1357,7 +1357,7 @@ function renderTracksPublic(){
   vb.innerHTML = !anySong ? "" : changing
     ? `<span class="mode-note">Change your picks: up to ${VOTE_MAX} songs per side.</span><button class="btn" type="button" id="sendVotes" ${myPicks.length ? "" : "disabled"}>Update my votes (${myPicks.length})</button><button class="btn ghost" type="button" id="cancelChange">Cancel</button>`
     : voted
-    ? `<span class="mode-note">Thanks for voting! Finn can see which songs people want most.</span>${myVote ? `<button class="btn ghost" type="button" id="changeVotes">Change my votes</button>` : ""}`
+    ? `<span class="mode-note">Thanks for voting! Finn can see which songs people want most.</span><button class="btn ghost" type="button" id="changeVotes">Change my votes</button>`
     : `<span class="mode-note">Tap ♡ on up to ${VOTE_MAX} songs per side that you most want to hear.</span><button class="btn" type="button" id="sendVotes" ${myPicks.length ? "" : "disabled"}>Send my votes (${myPicks.length})</button>`;
 }
 function renderTracksAdmin(){
@@ -1563,7 +1563,8 @@ setInterval(renderNowPlaying, 1000);
 
 /* ---------- Song votes ---------- */
 const VOTE_MAX = 3;
-// myVote = { id, key } of this device's vote, so it can be changed (votes sent before this existed can't be)
+// myVote = { id, key } of this device's vote, so it can be changed. A vote sent before this existed has no
+// key: changing it sends a new vote (the old one stays counted until the admin resets the votes).
 let myPicks = [], voted = false, myVote = null, changing = false, votes = [], votesUnwatch = null, votesResetAsk = false;
 try { const v = JSON.parse(localStorage.getItem("pk-my-votes")); if (v){ myPicks = v.picks || []; voted = !!v.sent; myVote = v.vote || null; } } catch(e){}
 const saveMyVotes = () => { try { localStorage.setItem("pk-my-votes", JSON.stringify({ picks: myPicks, sent: voted, vote: myVote })); } catch(e){} };
@@ -1584,7 +1585,7 @@ async function sendVotes(){
   const picks = myPicks.slice(0, VOTE_MAX * 2);
   try {
     if (changing && myVote){ await Store.changeVote(myVote.id, myVote.key, picks); toast("Your votes are updated!"); }
-    else { myVote = await Store.addVote(picks); toast("Thanks for voting!"); }
+    else { const wasChanging = changing; myVote = await Store.addVote(picks); toast(wasChanging ? "Your votes are updated!" : "Thanks for voting!"); }
     voted = true; changing = false; sentPicks = picks.slice(); saveMyVotes(); renderTracksPublic();
   }
   catch(e){ if (b){ b.disabled = false; b.textContent = changing ? `Update my votes (${myPicks.length})` : `Send my votes (${myPicks.length})`; } toast("Your votes didn't send. Try again."); }
