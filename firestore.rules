@@ -157,13 +157,30 @@ service cloud.firestore {
 
     // votes/{id}: one list of favorite songs per vote. Can't be changed; only
     // the admin can delete (reset) votes.
+    // A vote can be changed later from the device that sent it: the device keeps a
+    // secret key, only its SHA-256 (keyHash) is stored, and to change the picks the
+    // device writes the key into voteTokens/{id} (which nobody can read) in the same request.
     match /votes/{id} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasOnly(["picks", "createdAt"])
+      allow create: if request.resource.data.keys().hasOnly(["picks", "createdAt", "keyHash"])
                     && request.resource.data.picks is list
                     && request.resource.data.picks.size() > 0 && request.resource.data.picks.size() <= 6
-                    && request.resource.data.createdAt == request.time;
+                    && request.resource.data.createdAt == request.time
+                    && (!("keyHash" in request.resource.data) || request.resource.data.keyHash is string);
+      allow update: if "keyHash" in resource.data
+                    && getAfter(/databases/$(database)/documents/voteTokens/$(id)).data.at == request.time
+                    && keyMatches(getAfter(/databases/$(database)/documents/voteTokens/$(id)).data.key, resource.data.keyHash)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["picks", "updatedAt"])
+                    && request.resource.data.picks is list
+                    && request.resource.data.picks.size() > 0 && request.resource.data.picks.size() <= 6
+                    && request.resource.data.updatedAt == request.time;
       allow delete: if adminActing();
+    }
+    match /voteTokens/{id} {
+      allow read: if false;
+      allow write: if request.resource.data.keys().hasOnly(["key", "at"])
+                   && request.resource.data.at == request.time
+                   && keyMatches(request.resource.data.key, get(/databases/$(database)/documents/votes/$(id)).data.keyHash);
     }
 
     // tickets/{show}__{seat}: the ticket with the person's name.

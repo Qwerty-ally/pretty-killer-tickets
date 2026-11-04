@@ -877,9 +877,19 @@ const Store = {
     if (!fb){ const f = () => { let l = []; try { l = JSON.parse(localStorage.getItem("pk-votes")) || []; } catch(e){} cb(l); }; return Demo.watch(f); }
     return fb.db.collection("votes").onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, picks: d.data().picks || [] }))), () => cb([]));
   },
+  // returns { id, key }: the device keeps the key so it can change its votes later
   async addVote(picks){
-    if (!fb){ let l = []; try { l = JSON.parse(localStorage.getItem("pk-votes")) || []; } catch(e){} l.push({ id: makeKey(), picks }); try { localStorage.setItem("pk-votes", JSON.stringify(l)); } catch(e){} Demo.notify(); return; }
-    await fb.db.collection("votes").add({ picks, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    const key = makeKey();
+    if (!fb){ let l = []; try { l = JSON.parse(localStorage.getItem("pk-votes")) || []; } catch(e){} const id = makeKey(); l.push({ id, picks }); try { localStorage.setItem("pk-votes", JSON.stringify(l)); } catch(e){} Demo.notify(); return { id, key }; }
+    const ref = await fb.db.collection("votes").add({ picks, keyHash: await sha256(key), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    return { id: ref.id, key };
+  },
+  async changeVote(id, key, picks){
+    if (!fb){ let l = []; try { l = JSON.parse(localStorage.getItem("pk-votes")) || []; } catch(e){} l = l.map(v => v.id === id ? { ...v, picks } : v); try { localStorage.setItem("pk-votes", JSON.stringify(l)); } catch(e){} Demo.notify(); return; }
+    const now = firebase.firestore.FieldValue.serverTimestamp(), batch = fb.db.batch();
+    batch.set(fb.db.collection("voteTokens").doc(id), { key, at: now });
+    batch.update(fb.db.collection("votes").doc(id), { picks, updatedAt: now });
+    await batch.commit();
   },
   async resetVotes(ids){
     if (!fb){ try { localStorage.removeItem("pk-votes"); } catch(e){} Demo.notify(); return; }
@@ -1340,12 +1350,14 @@ function renderTracksPublic(){
     <section class="tl ${sd.key}">
       <h3>${sd.title}</h3><span class="label">${sd.sub}</span>
       <ol>${tracks[sd.key].map((name, i) => { const n = name.trim(), pick = `${sd.key}|${n}`;
-        return `<li><span>${String(i + 1).padStart(2, "0")}</span><div class="nm">${n ? esc(n) : `<em class="tba">To be announced</em>`}</div>${n ? `<button class="vote" type="button" data-vote="${esc(pick)}" aria-pressed="${myPicks.includes(pick)}" ${voted ? "disabled" : ""} aria-label="Vote for ${esc(n)}">${myPicks.includes(pick) ? "♥" : "♡"}</button>` : "<i></i>"}</li>`; }).join("")}</ol>
+        return `<li><span>${String(i + 1).padStart(2, "0")}</span><div class="nm">${n ? esc(n) : `<em class="tba">To be announced</em>`}</div>${n ? `<button class="vote" type="button" data-vote="${esc(pick)}" aria-pressed="${myPicks.includes(pick)}" ${voted && !changing ? "disabled" : ""} aria-label="Vote for ${esc(n)}">${myPicks.includes(pick) ? "♥" : "♡"}</button>` : "<i></i>"}</li>`; }).join("")}</ol>
     </section>`).join("");
   $("#tracklistHead").textContent = anySong ? "Tracklist" : "Tracklist · songs coming soon";
   const vb = $("#voteBar");
-  vb.innerHTML = !anySong ? "" : voted
-    ? `<span class="mode-note">Thanks for voting! Finn can see which songs people want most.</span>`
+  vb.innerHTML = !anySong ? "" : changing
+    ? `<span class="mode-note">Change your picks: up to ${VOTE_MAX} songs per side.</span><button class="btn" type="button" id="sendVotes" ${myPicks.length ? "" : "disabled"}>Update my votes (${myPicks.length})</button><button class="btn ghost" type="button" id="cancelChange">Cancel</button>`
+    : voted
+    ? `<span class="mode-note">Thanks for voting! Finn can see which songs people want most.</span>${myVote ? `<button class="btn ghost" type="button" id="changeVotes">Change my votes</button>` : ""}`
     : `<span class="mode-note">Tap ♡ on up to ${VOTE_MAX} songs per side that you most want to hear.</span><button class="btn" type="button" id="sendVotes" ${myPicks.length ? "" : "disabled"}>Send my votes (${myPicks.length})</button>`;
 }
 function renderTracksAdmin(){
@@ -1551,11 +1563,13 @@ setInterval(renderNowPlaying, 1000);
 
 /* ---------- Song votes ---------- */
 const VOTE_MAX = 3;
-let myPicks = [], voted = false, votes = [], votesUnwatch = null, votesResetAsk = false;
-try { const v = JSON.parse(localStorage.getItem("pk-my-votes")); if (v){ myPicks = v.picks || []; voted = !!v.sent; } } catch(e){}
-const saveMyVotes = () => { try { localStorage.setItem("pk-my-votes", JSON.stringify({ picks: myPicks, sent: voted })); } catch(e){} };
+// myVote = { id, key } of this device's vote, so it can be changed (votes sent before this existed can't be)
+let myPicks = [], voted = false, myVote = null, changing = false, votes = [], votesUnwatch = null, votesResetAsk = false;
+try { const v = JSON.parse(localStorage.getItem("pk-my-votes")); if (v){ myPicks = v.picks || []; voted = !!v.sent; myVote = v.vote || null; } } catch(e){}
+const saveMyVotes = () => { try { localStorage.setItem("pk-my-votes", JSON.stringify({ picks: myPicks, sent: voted, vote: myVote })); } catch(e){} };
+let sentPicks = myPicks.slice();   // what was sent, to undo an unsent change
 function toggleVote(pick){
-  if (voted) return;
+  if (voted && !changing) return;
   if (myPicks.includes(pick)) myPicks = myPicks.filter(p => p !== pick);
   else {
     const side = pick.split("|")[0];
@@ -1565,11 +1579,18 @@ function toggleVote(pick){
   saveMyVotes(); renderTracksPublic();
 }
 async function sendVotes(){
-  if (!myPicks.length || voted) return;
+  if (!myPicks.length || (voted && !changing)) return;
   const b = $("#sendVotes"); if (b){ b.disabled = true; b.textContent = "Sending…"; }
-  try { await Store.addVote(myPicks.slice(0, VOTE_MAX * 2)); voted = true; saveMyVotes(); renderTracksPublic(); toast("Thanks for voting!"); }
-  catch(e){ if (b){ b.disabled = false; b.textContent = `Send my votes (${myPicks.length})`; } toast("Your votes didn't send. Try again."); }
+  const picks = myPicks.slice(0, VOTE_MAX * 2);
+  try {
+    if (changing && myVote){ await Store.changeVote(myVote.id, myVote.key, picks); toast("Your votes are updated!"); }
+    else { myVote = await Store.addVote(picks); toast("Thanks for voting!"); }
+    voted = true; changing = false; sentPicks = picks.slice(); saveMyVotes(); renderTracksPublic();
+  }
+  catch(e){ if (b){ b.disabled = false; b.textContent = changing ? `Update my votes (${myPicks.length})` : `Send my votes (${myPicks.length})`; } toast("Your votes didn't send. Try again."); }
 }
+function startChange(){ changing = true; renderTracksPublic(); }
+function cancelChange(){ changing = false; myPicks = sentPicks.slice(); saveMyVotes(); renderTracksPublic(); }
 function renderVotesAdmin(){
   const tally = {};
   votes.forEach(v => (v.picks || []).forEach(p => tally[p] = (tally[p] || 0) + 1));
@@ -1810,6 +1831,8 @@ document.addEventListener("click", async e => {
   const vt = e.target.closest("[data-vote]");
   if (vt) return toggleVote(vt.dataset.vote);
   if (e.target.closest("#sendVotes")) return sendVotes();
+  if (e.target.closest("#changeVotes")) return startChange();
+  if (e.target.closest("#cancelChange")) return cancelChange();
   if (e.target.closest("[data-votes-reset]")){ votesResetAsk = true; return renderVotesAdmin(); }
   if (e.target.closest("[data-votes-reset-no]")){ votesResetAsk = false; return renderVotesAdmin(); }
   if (e.target.closest("[data-votes-reset-yes]")){
