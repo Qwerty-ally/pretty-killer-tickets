@@ -12,6 +12,8 @@ Free ticket site for Finn Shapiro's shows at 15 Freeman Parkway, in the same Pre
 
 ## Show day and extras
 
+- **Check-in at the door:** the admin page has a **Check-in** card at the top. Pick **Pretty · AM** or **Killer · PM**, then tap **Check in** as each person arrives (search by name or seat). It shows how many are here out of how many are coming, a **Here** list with arrival times (**Undo** takes one back), and people who said they can't make that show at the bottom. Check-ins are saved on the ticket (`inPretty` / `inKiller`), and only the admin can set them.
+
 - **Seat opened alert:** when a sold-out show gets a free seat, the button switches back to **Find tickets**, the card says how few are left, and anyone with the site open gets a heads-up.
 - **Intro songs:** the admin page has an **Intro songs** card with the Pretty intro and the Killer intro (`media/pretty-killer/intro-songs/`). They aren't shown anywhere else on the site.
 - **Door QR code:** on the admin page (with a download). It opens `confirmed.html`, which is just the Ticket Confirmed picture on black.

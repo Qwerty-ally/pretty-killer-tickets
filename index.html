@@ -320,6 +320,28 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .gb-msg .acts{margin-left:auto;display:flex;gap:10px}
 /* admin extras */
 .admin-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:16px}
+/* check-in at the door */
+.ci{margin-bottom:16px}
+.ci-top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.ci-seg{display:flex;gap:6px}
+.ci-seg button{min-height:44px;padding:10px 14px;border:2px solid var(--line);background:var(--surface);color:var(--ink);font:600 13px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;cursor:pointer;border-radius:var(--radius)}
+.ci-seg button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+.ci-count{font:900 26px/1 var(--display)}
+.ci-count small{font:600 12px var(--mono);color:var(--muted);margin-left:6px}
+.ci-bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.ci-bar i{display:block;width:0;height:100%;background:var(--accent);transition:width .4s}
+.ci input[type=search]{width:100%;padding:12px;border:1.5px solid var(--line);background:var(--ground);color:var(--ink);border-radius:var(--radius);font:inherit}
+.ci-list{display:flex;flex-direction:column;gap:6px}
+.ci-row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:10px 12px;border:1.5px solid var(--line);border-radius:var(--radius);background:var(--ground)}
+.ci-row b{font-size:17px}
+.ci-row .meta{grid-column:1;font:600 12px var(--mono);color:var(--muted)}
+.ci-row .act{grid-row:1 / span 2;grid-column:2;display:flex;gap:8px;align-items:center}
+.ci-row.here{border-color:#3fbf7f}
+.ci-row.here b::before{content:"✓ ";color:#3fbf7f}
+.ci-row.away{opacity:.5}
+.ci-in{min-height:48px;min-width:120px;padding:10px 16px;border:0;background:var(--accent);color:var(--accent-ink);font:700 15px var(--mono);text-transform:uppercase;letter-spacing:.06em;cursor:pointer;border-radius:var(--radius)}
+.ci-time{font:600 13px var(--mono);color:#3fbf7f}
+.ci-sub{font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:8px 0 0}
 .acard{background:var(--surface);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:10px}
 .acard h3{margin:0;font:900 20px/1.1 var(--display)}
 [data-side="killer"] .acard h3{font-weight:400;text-transform:uppercase}
@@ -497,6 +519,19 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
 
     <div id="adminBody" hidden>
       <div class="stats" id="stats"></div>
+      <section class="acard ci" aria-labelledby="ciHead">
+        <div class="ci-top">
+          <h3 id="ciHead">Check-in</h3>
+          <div class="ci-seg" role="group" aria-label="Which show">
+            <button type="button" data-ci-side="pretty">Pretty · AM</button>
+            <button type="button" data-ci-side="killer">Killer · PM</button>
+          </div>
+        </div>
+        <div><span class="ci-count" id="ciCount"></span></div>
+        <div class="ci-bar"><i id="ciFill"></i></div>
+        <input type="search" id="ciSearch" placeholder="Find a name or seat" aria-label="Find a name or seat">
+        <div class="ci-list" id="ciList"></div>
+      </section>
       <div class="admin-cards">
         <section class="acard">
           <h3>Door QR code</h3>
@@ -898,6 +933,13 @@ const Store = {
   // Change which shows someone is coming to (they keep their seat).
   // Owner: proves it with the key on their device, written to ownerTokens/{id}
   // (which nobody can read). Admin: uses the admin token.
+  // check-in at the door: inPretty / inKiller is when they arrived (admin only)
+  async checkIn(t, side, on){
+    const field = side === "killer" ? "inKiller" : "inPretty";
+    if (!fb){ const all = Demo.read(); if (all[t.id]){ if (on) all[t.id][field] = Date.now(); else delete all[t.id][field]; Demo.write(all); } return; }
+    const FV = firebase.firestore.FieldValue;
+    await this.adminWrite(b => b.update(fb.db.collection("tickets").doc(t.id), { [field]: on ? FV.serverTimestamp() : FV.delete() }));
+  },
   async setShows(t, missMorning, missNight, asAdmin){
     if (!fb){ const all = Demo.read(); if (all[t.id]){ all[t.id].missMorning = missMorning; all[t.id].missNight = missNight; Demo.write(all); } return; }
     const FV = firebase.firestore.FieldValue, batch = fb.db.batch();
@@ -1243,6 +1285,48 @@ function renderAdminMap(rows){
     ${seats}
   </svg>`;
 }
+/* ---------- check-in at the door ----------
+   Pick the show, then tap Check in as people arrive. Everyone with a ticket is listed;
+   people who said they can't make that show are at the bottom. Undo takes it back. */
+let ciSide = new Date().getHours() < 12 ? "pretty" : "killer";
+const ciTime = v => v ? (v.toMillis ? v.toMillis() : +v) : 0;
+function renderCheckIn(all){
+  const field = ciSide === "killer" ? "inKiller" : "inPretty", miss = ciSide === "killer" ? "missNight" : "missMorning";
+  document.querySelectorAll("[data-ci-side]").forEach(b => b.setAttribute("aria-pressed", b.dataset.ciSide === ciSide));
+  const coming = all.filter(t => !t[miss]), here = coming.filter(t => ciTime(t[field]));
+  $("#ciCount").innerHTML = `${here.length} of ${coming.length} here<small>${ciSide === "killer" ? "Killer show" : "Pretty show"}</small>`;
+  $("#ciFill").style.width = coming.length ? `${here.length / coming.length * 100}%` : "0";
+  const q = $("#ciSearch").value.trim().toLowerCase();
+  const match = t => !q || `${t.name} ${seatLabel(seatById(t.seat) || { area:{ name:t.area || "" }, n:"" })}`.toLowerCase().includes(q);
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  const row = t => { const at = ciTime(t[field]), s = seatById(t.seat), away = !!t[miss];
+    return `<div class="ci-row${at ? " here" : ""}${away ? " away" : ""}">
+      <b>${esc(t.name)}</b>
+      <span class="meta">${s ? esc(seatLabel(s)) : esc(t.area || "")} · ${t.relation === "family" ? "Family" : "Friend"}${away ? " · said they can't make this show" : ""}</span>
+      <span class="act">${at
+        ? `<span class="ci-time">${new Date(at).toLocaleTimeString([], { hour:"numeric", minute:"2-digit" })}</span><button class="linkish" type="button" data-ci="${esc(t.id)}" data-ci-on="0">Undo</button>`
+        : `<button class="ci-in" type="button" data-ci="${esc(t.id)}" data-ci-on="1">Check in</button>`}</span>
+    </div>`; };
+  const waiting = coming.filter(t => !ciTime(t[field]) && match(t)).sort(byName);
+  const arrived = here.filter(match).sort((a, b) => ciTime(b[field]) - ciTime(a[field]));
+  const away = all.filter(t => t[miss] && match(t)).sort(byName);
+  $("#ciList").innerHTML = (!all.length ? `<p class="mode-note">No tickets yet.</p>` : "")
+    + (waiting.length ? waiting.map(row).join("") : coming.length && !q ? `<p class="mode-note">Everyone's here! 🎉</p>` : "")
+    + (arrived.length ? `<p class="ci-sub">Here</p>` + arrived.map(row).join("") : "")
+    + (away.length ? `<p class="ci-sub">Can't make this show</p>` + away.map(row).join("") : "")
+    + (q && !waiting.length && !arrived.length && !away.length ? `<p class="mode-note">Nobody matches “${esc(q)}”.</p>` : "");
+}
+document.addEventListener("click", async e => {
+  const sideBtn = e.target.closest("[data-ci-side]");
+  if (sideBtn){ ciSide = sideBtn.dataset.ciSide; renderCheckIn(adminRows); return; }
+  const b = e.target.closest("[data-ci]"); if (!b) return;
+  const t = adminRows.find(x => x.id === b.dataset.ci); if (!t) return;
+  b.disabled = true;
+  try { await Store.checkIn(t, ciSide, b.dataset.ciOn === "1"); if (b.dataset.ciOn === "1") toast(`${t.name} is checked in`); }
+  catch(err){ b.disabled = false; toast("That didn't go through. Try again."); }
+});
+document.addEventListener("input", e => { if (e.target.id === "ciSearch") renderCheckIn(adminRows); });
+
 function renderAdmin(){
   const q = $("#aSearch").value.trim().toLowerCase();
   const all = [...adminRows].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -1256,6 +1340,7 @@ function renderAdmin(){
     [all.filter(t => !t.missNight).length, "Coming to the night show"]
   ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
   renderAdminMap(all);
+  renderCheckIn(all);
   renderUndo();
   const mv = all.find(t => t.id === adminMove), bar = $("#moveBar");
   if (adminMove && !mv){ adminMove = null; adminMoveTo = null; }
