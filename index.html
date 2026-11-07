@@ -376,6 +376,10 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
   .fx.collage{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,1fr)}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+.cam{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-size:13px;cursor:pointer}
+.cam input{width:18px;height:18px;accent-color:var(--accent,#f25fc4)}
+.cam input:disabled + span{opacity:.35}
+.cam.on span{font-weight:700}
 </style>
 </head>
 <body>
@@ -594,7 +598,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Seat</th><th>Area</th><th>Name</th><th>Friend or family</th><th>Shows</th><th>Claimed</th><th>Ticket code</th><th></th></tr></thead>
+          <thead><tr><th>Seat</th><th>Area</th><th>Name</th><th>Friend or family</th><th>Shows</th><th title="Up to 3 people bring a camera">Camera</th><th>Claimed</th><th>Ticket code</th><th></th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
       </div>
@@ -940,6 +944,11 @@ const Store = {
     const FV = firebase.firestore.FieldValue;
     await this.adminWrite(b => b.update(fb.db.collection("tickets").doc(t.id), { [field]: on ? FV.serverTimestamp() : FV.delete() }));
   },
+  // camera: true on up to 3 tickets (the people filming the show), admin only
+  async setCamera(t, on){
+    if (!fb){ const all = Demo.read(); if (all[t.id]){ if (on) all[t.id].camera = true; else delete all[t.id].camera; Demo.write(all); } return; }
+    await this.adminWrite(b => b.update(fb.db.collection("tickets").doc(t.id), { camera: on ? true : firebase.firestore.FieldValue.delete() }));
+  },
   async setShows(t, missMorning, missNight, asAdmin){
     if (!fb){ const all = Demo.read(); if (all[t.id]){ all[t.id].missMorning = missMorning; all[t.id].missNight = missNight; Demo.write(all); } return; }
     const FV = firebase.firestore.FieldValue, batch = fb.db.batch();
@@ -968,6 +977,7 @@ function pickTicket(t){
   if (t.keyHash) d.keyHash = t.keyHash;
   if (typeof t.missMorning === "boolean") d.missMorning = t.missMorning;
   if (typeof t.missNight === "boolean") d.missNight = t.missNight;
+  if (t.camera) d.camera = true;
   return d;
 }
 function makeKey(){ return Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join(""); }
@@ -1252,7 +1262,7 @@ function startAdmin(){
   if (!photosUnwatch) photosUnwatch = Store.watchPhotos(l => { photoDocs = l; renderPhotosAdmin(); });
   if (adminUnwatch) return;
   adminUnwatch = Store.watchTickets(rows => { adminRows = rows.filter(t => !t.test); testRows = rows.filter(t => t.test); renderAdmin(); },
-    () => { $("#rows").innerHTML = `<tr><td colspan="8" class="empty">The ticket list didn't load. Check your connection and reload the page.</td></tr>`; });
+    () => { $("#rows").innerHTML = `<tr><td colspan="9" class="empty">The ticket list didn't load. Check your connection and reload the page.</td></tr>`; });
 }
 const shortName = n => { const parts = String(n || "").trim().split(/\s+/); const s = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0] || ""; return s.length > 12 ? s.slice(0, 11) + "…" : s; };
 function renderAdminMap(rows){
@@ -1337,7 +1347,8 @@ function renderAdmin(){
     [friends, "Friends"],
     [family, "Family"],
     [all.filter(t => !t.missMorning).length, "Coming to the morning show"],
-    [all.filter(t => !t.missNight).length, "Coming to the night show"]
+    [all.filter(t => !t.missNight).length, "Coming to the night show"],
+    [`${all.filter(t => t.camera).length}/${MAX_CAMERAS}`, "📷 Cameras"]
   ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
   renderAdminMap(all);
   renderCheckIn(all);
@@ -1361,6 +1372,7 @@ function renderAdmin(){
       <td>${esc(t.name)} <span class="rel">Test</span></td>
       <td><span class="rel ${t.relation === "family" ? "family" : ""}">${t.relation === "family" ? "Family" : "Friend"}</span></td>
       <td><span class="att ${t.missMorning || t.missNight ? "part" : ""}">${comingTo(t)}</span></td>
+      <td></td>
       <td class="num">${new Date(t.createdAt).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" })}</td>
       <td class="num">${esc(t.code || "")}</td>
       <td>${testConfirm === t.id
@@ -1368,9 +1380,10 @@ function renderAdmin(){
         : `<button class="linkish" type="button" data-test-ask="${esc(t.id)}">Remove test ticket</button>`}</td>
     </tr>`).join("");
   if (!rows.length){
-    $("#rows").innerHTML = testHTML + `<tr><td colspan="8" class="empty">${all.length ? "No tickets match that search." : "No one has claimed a ticket yet."}</td></tr>`;
+    $("#rows").innerHTML = testHTML + `<tr><td colspan="9" class="empty">${all.length ? "No tickets match that search." : "No one has claimed a ticket yet."}</td></tr>`;
     return;
   }
+  const camerasFull = all.filter(t => t.camera).length >= MAX_CAMERAS;
   $("#rows").innerHTML = testHTML + rows.map(t => {
     const s = seatById(t.seat);
     return `<tr>
@@ -1381,6 +1394,9 @@ function renderAdmin(){
       <td>${!fb || adminKey ? `<select class="att-select ${t.missMorning || t.missNight ? "part" : ""}" data-shows="${esc(t.id)}" aria-label="Shows for ${esc(t.name)}">
         ${[["both","Morning + night"],["morning","Morning only"],["night","Night only"],["neither","Can't make either"]].map(([v, l]) => `<option value="${v}" ${showsValue(t) === v ? "selected" : ""}>${l}</option>`).join("")}
       </select>` : `<span class="att ${t.missMorning || t.missNight ? "part" : ""}">${comingTo(t)}</span>`}</td>
+      <td>${!fb || adminKey
+        ? `<label class="cam${t.camera ? " on" : ""}"><input type="checkbox" data-camera="${esc(t.id)}" ${t.camera ? "checked" : ""} ${!t.camera && camerasFull ? "disabled" : ""}><span>📷${t.camera ? " Camera" : ""}</span></label>`
+        : t.camera ? `<span class="cam on">📷 Camera</span>` : ""}</td>
       <td class="num">${new Date(t.createdAt).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" })}</td>
       <td class="num">${esc(t.code || "")}</td>
       <td>${!fb || adminKey ? (adminConfirm === t.id
@@ -1390,6 +1406,17 @@ function renderAdmin(){
   }).join("");
 }
 $("#aSearch").addEventListener("input", renderAdmin);
+const MAX_CAMERAS = 3;
+document.addEventListener("change", async e => {
+  const box = e.target.closest && e.target.closest("input[data-camera]");
+  if (!box) return;
+  const t = adminRows.find(r => r.id === box.dataset.camera); if (!t) return;
+  if (box.checked && adminRows.filter(r => r.camera).length >= MAX_CAMERAS){ box.checked = false; return toast(`Only ${MAX_CAMERAS} people can have cameras. Untick someone first.`); }
+  box.disabled = true;
+  try { await Store.setCamera(t, box.checked); toast(box.checked ? `📷 ${t.name} has a camera` : `${t.name} no longer has a camera`); }
+  catch(err){ box.checked = !box.checked; toast("Couldn't save that. Check your connection and try again."); }
+  finally { box.disabled = false; }
+});
 document.addEventListener("change", async e => {
   const sel = e.target.closest && e.target.closest("select[data-shows]");
   if (!sel) return;
@@ -1404,8 +1431,8 @@ document.addEventListener("change", async e => {
 $("#undoBtn").addEventListener("click", adminUndo);
 $("#diceBtn").addEventListener("click", rollDice);
 $("#copyCsv").addEventListener("click", async () => {
-  const head = ["Seat","Area","Name","Friend or family","Shows","Claimed","Ticket code"];
-  const lines = [head, ...adminRows.map(t => [t.seat, t.area, t.name, t.relation, comingTo(t), new Date(t.createdAt).toLocaleString(), t.code])]
+  const head = ["Seat","Area","Name","Friend or family","Shows","Camera","Claimed","Ticket code"];
+  const lines = [head, ...adminRows.map(t => [t.seat, t.area, t.name, t.relation, comingTo(t), t.camera ? "Yes" : "", new Date(t.createdAt).toLocaleString(), t.code])]
     .map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   try { await navigator.clipboard.writeText(lines); toast("Copied. Paste it into a spreadsheet."); }
   catch(e){ toast("Couldn't copy here. Try a different browser."); }
