@@ -1545,7 +1545,13 @@ $("#saveTracks").addEventListener("click", async () => {
 const DEFAULT_LEN = 210;
 const slug = n => String(n).toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 const INTRO = { pretty: "Pretty Intro", killer: "Killer Intro" };
-const songFile = (side, i, name) => i === -1 && name == null ? `media/pretty-killer/intro-songs/${side}-intro.mp3` : `media/pretty-killer/songs/${slug((name ?? tracks[side][i]).trim())}.mp3`;
+// Songs that play a different version on the admin page only. Everywhere else (like the shop's digital album) keeps the normal file.
+const ADMIN_VERSIONS = { "pk": "media/pretty-killer/admin-songs/pk-performance.mp3" };
+const songFile = (side, i, name) => {
+  if (i === -1 && name == null) return `media/pretty-killer/intro-songs/${side}-intro.mp3`;
+  const key = slug((name ?? tracks[side][i]).trim());
+  return ADMIN_VERSIONS[key] || `media/pretty-killer/songs/${key}.mp3`;
+};
 const songName = (side, i) => i === -1 ? INTRO[side] : tracks[side][i].trim();
 const fileOK = {};   // file path -> true / false (checked on the admin page)
 let live = null, np = null;
