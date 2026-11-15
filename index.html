@@ -599,12 +599,14 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
           <a class="btn ghost" href="media/pretty-killer/shop-qr/good-morning-tee.png" download="good-morning-tee-qr.png" style="align-self:flex-start">Download QR code</a>
         </section>
         <section class="acard">
-          <h3>Intro songs</h3>
-          <p class="mode-note">Only on this admin page. Play the right one before each show starts.</p>
-          <div class="label">Pretty intro</div>
-          <audio class="intro-song" src="media/pretty-killer/intro-songs/pretty-intro.mp3" controls preload="none" style="width:100%"></audio>
-          <div class="label">Killer intro</div>
-          <audio class="intro-song" src="media/pretty-killer/intro-songs/killer-intro.mp3" controls preload="none" style="width:100%"></audio>
+          <h3>Intro films</h3>
+          <p class="mode-note">Only on this admin page. Play the right one before each show starts. Tap the square button on the video to make it full screen.</p>
+          <div class="label">Pretty intro film</div>
+          <video class="intro-film" src="media/pretty-killer/intro-films/pretty-intro.mp4" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius);background:#000"></video>
+          <p class="mode-note intro-film-missing" hidden>No Pretty intro film yet. Send it to Claude to add it.</p>
+          <div class="label">Killer intro film</div>
+          <video class="intro-film" src="media/pretty-killer/intro-films/killer-intro.mp4" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius);background:#000"></video>
+          <p class="mode-note intro-film-missing" hidden>No Killer intro film yet. Send it to Claude to add it.</p>
         </section>
         <section class="acard">
           <h3>Now playing</h3>
@@ -1595,6 +1597,11 @@ const songFile = (side, i, name) => {
   const key = slug((name ?? tracks[side][i]).trim());
   return ADMIN_VERSIONS[key] || `media/pretty-killer/songs/${key}.mp3`;
 };
+// intro films: until a film is added, hide its player and say so
+document.querySelectorAll(".intro-film").forEach(v => v.addEventListener("error", () => {
+  v.hidden = true;
+  const note = v.nextElementSibling; if (note && note.classList.contains("intro-film-missing")) note.hidden = false;
+}));
 const songName = (side, i) => i === -1 ? INTRO[side] : tracks[side][i].trim();
 const fileOK = {};   // file path -> true / false (checked on the admin page)
 let live = null, np = null;
@@ -2115,7 +2122,7 @@ async function route(){
   $("#view-vintage").hidden = current.view !== "vintage";
   $("#view-tracks").hidden = current.view !== "tracks";
   if (current.view !== "tracks") $("#pkMovie").pause();
-  if (current.view !== "admin") document.querySelectorAll(".intro-song").forEach(a => a.pause());
+  if (current.view !== "admin") document.querySelectorAll(".intro-film").forEach(a => a.pause());
   $("#view-guestbook").hidden = current.view !== "guestbook";
   if (current.view === "guestbook"){ if (!gbUnwatch) gbUnwatch = Store.watchGuestbook(l => { gbPublic = l; renderGuestbook(); }, false); renderGuestbook(); }
   if (current.view === "tracks"){ watchTracksOnce(); renderTracksPublic(); }
