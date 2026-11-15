@@ -1580,7 +1580,10 @@ $("#saveTracks").addEventListener("click", async () => {
 const DEFAULT_LEN = 210;
 const slug = n => String(n).toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 // Songs that play a different version on the admin page only. Everywhere else (like the shop's digital album) keeps the normal file.
-const ADMIN_VERSIONS = { "pk": "media/pretty-killer/admin-songs/pk-performance.mp3" };
+const ADMIN_VERSIONS = {
+  "pk": "media/pretty-killer/admin-songs/pk-performance.mp3",
+  "sincerely-carrie": "media/pretty-killer/admin-songs/sincerely-carrie-tour.mp3",   // the tour exclusive version
+};
 const songFile = (side, i, name) => {
   const key = slug((name ?? tracks[side][i]).trim());
   return ADMIN_VERSIONS[key] || `media/pretty-killer/songs/${key}.mp3`;
