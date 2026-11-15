@@ -599,16 +599,6 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
           <a class="btn ghost" href="media/pretty-killer/shop-qr/good-morning-tee.png" download="good-morning-tee-qr.png" style="align-self:flex-start">Download QR code</a>
         </section>
         <section class="acard">
-          <h3>Intro films</h3>
-          <p class="mode-note">Only on this admin page. Play the right one before each show starts. Tap the square button on the video to make it full screen.</p>
-          <div class="label">Pretty intro film</div>
-          <video class="intro-film" src="media/pretty-killer/intro-films/pretty-intro.mp4" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius);background:#000"></video>
-          <p class="mode-note intro-film-missing" hidden>No Pretty intro film yet. Send it to Claude to add it.</p>
-          <div class="label">Killer intro film</div>
-          <video class="intro-film" src="media/pretty-killer/intro-films/killer-intro.mp4" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius);background:#000"></video>
-          <p class="mode-note intro-film-missing" hidden>No Killer intro film yet. Send it to Claude to add it.</p>
-        </section>
-        <section class="acard">
           <h3>Now playing</h3>
           <p class="mode-note" id="npStatus">Not playing.</p>
           <div class="np-ctrl">
@@ -1586,27 +1576,20 @@ $("#saveTracks").addEventListener("click", async () => {
    Each song can have its own audio file: media/pretty-killer/songs/<song-name>.mp3
    (song name in lowercase with dashes, e.g. anne.mp3), used on whichever side the song is. The admin page plays the songs one
    right after another. The "Now playing" bar shows only on the admin page. Songs without a file run on a 3:30 timer.
-   Each side starts with its intro song (index -1, shown as "0."). */
+   Each side starts with its first song. */
 const DEFAULT_LEN = 210;
 const slug = n => String(n).toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-const INTRO = { pretty: "Pretty Intro", killer: "Killer Intro" };
 // Songs that play a different version on the admin page only. Everywhere else (like the shop's digital album) keeps the normal file.
 const ADMIN_VERSIONS = { "pk": "media/pretty-killer/admin-songs/pk-performance.mp3" };
 const songFile = (side, i, name) => {
-  if (i === -1 && name == null) return `media/pretty-killer/intro-songs/${side}-intro.mp3`;
   const key = slug((name ?? tracks[side][i]).trim());
   return ADMIN_VERSIONS[key] || `media/pretty-killer/songs/${key}.mp3`;
 };
-// intro films: until a film is added, hide its player and say so
-document.querySelectorAll(".intro-film").forEach(v => v.addEventListener("error", () => {
-  v.hidden = true;
-  const note = v.nextElementSibling; if (note && note.classList.contains("intro-film-missing")) note.hidden = false;
-}));
-const songName = (side, i) => i === -1 ? INTRO[side] : tracks[side][i].trim();
+const songName = (side, i) => (tracks[side][i] || "").trim();
 const fileOK = {};   // file path -> true / false (checked on the admin page)
 let live = null, np = null;
 const namedSlots = side => (tracks[side] || []).map((n, i) => n.trim() ? i : -1).filter(i => i >= 0);
-const playOrder = side => [-1, ...namedSlots(side)];   // the intro, then the tracklist
+const playOrder = side => namedSlots(side);   // the tracklist, in order
 const livePos = () => !live || !live.on ? 0 : live.pos + (live.playing ? Math.max(0, (Date.now() - live.startedAt) / 1000) : 0);
 function computeNowPlaying(){
   if (!live || !live.on) return null;
@@ -2122,7 +2105,6 @@ async function route(){
   $("#view-vintage").hidden = current.view !== "vintage";
   $("#view-tracks").hidden = current.view !== "tracks";
   if (current.view !== "tracks") $("#pkMovie").pause();
-  if (current.view !== "admin") document.querySelectorAll(".intro-film").forEach(a => a.pause());
   $("#view-guestbook").hidden = current.view !== "guestbook";
   if (current.view === "guestbook"){ if (!gbUnwatch) gbUnwatch = Store.watchGuestbook(l => { gbPublic = l; renderGuestbook(); }, false); renderGuestbook(); }
   if (current.view === "tracks"){ watchTracksOnce(); renderTracksPublic(); }
