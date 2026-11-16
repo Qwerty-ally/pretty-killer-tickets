@@ -105,6 +105,9 @@ h2.sec{font:900 34px/1 var(--display);margin:44px 0 16px}
 .tag.hot{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .event.ended{filter:grayscale(1);opacity:.55;box-shadow:none}
 .event.ended .btn{pointer-events:none}
+.event.soon{outline:2px dashed var(--accent);outline-offset:-2px}
+.event.soon h3{letter-spacing:.2em}
+.event.soon .btn{pointer-events:none;opacity:.75}
 
 /* my tickets */
 .stubs{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
@@ -747,7 +750,9 @@ const CONFIG = {
 const VENUE_ADDRESS = "15 Freeman Parkway";
 const SHOWS = [
   { id:"vintage", name:"The Vintage Tour", month:"Sep", day:"19", when:"Saturday, September 19, 2026", ended:true, memories:true },
-  { id:"prettykiller", name:"Pretty Killer Tour", month:"Feb", day:"27–28", when:"Killer: Saturday, February 27, 2027 · Pretty: Sunday, February 28, 2027", ended:false }
+  { id:"prettykiller", name:"Pretty Killer Tour", month:"Feb", day:"27–28", when:"Killer: Saturday, February 27, 2027 · Pretty: Sunday, February 28, 2027", ended:false },
+  // a secret next show: the date is out, the name and tickets aren't yet
+  { id:"mystery", name:"???", month:"Sep", day:"18", when:"Saturday, September 18, 2027", ended:false, soon:true }
 ];
 const LAYOUT = {
   view:"0 0 1456 834",
@@ -1091,14 +1096,14 @@ const current = { view:"home", show:null, picked:null, taken:new Set(), unwatch:
 
 function renderEvents(){
   $("#events").innerHTML = SHOWS.map(s => `
-    <article class="event ${s.ended ? "ended" : ""} ${s.memories ? "memories" : ""}">
+    <article class="event ${s.ended ? "ended" : ""} ${s.memories ? "memories" : ""} ${s.soon ? "soon" : ""}">
       <div class="date"><span>${s.month}</span><b>${s.day}</b></div>
       <div>
         <h3>${s.name}</h3>
         <div class="meta">${s.when} · ${VENUE_ADDRESS}</div>
-        <div class="tags">${s.ended ? `<span class="tag">This show has ended</span>` : `<span class="tag hot">Free</span><span class="tag">Same ticket for Pretty + Killer</span><span class="tag" id="left-${s.id}">${SEATS.length} seats</span>`}</div>
+        <div class="tags">${s.soon ? `<span class="tag hot">Coming soon</span><span class="tag">Tickets aren't out yet</span>` : s.ended ? `<span class="tag">This show has ended</span>` : `<span class="tag hot">Free</span><span class="tag">Same ticket for Pretty + Killer</span><span class="tag" id="left-${s.id}">${SEATS.length} seats</span>`}</div>
       </div>
-      <div class="go">${s.memories ? `<a class="btn" href="#vintage" data-memories>See memories</a>` : s.ended ? `<span class="btn" aria-disabled="true">Ended</span>` : `<span id="go-${s.id}"><a class="btn" href="#show-${s.id}">Find tickets</a></span>`}</div>
+      <div class="go">${s.soon ? `<span class="btn" aria-disabled="true">Coming soon</span>` : s.memories ? `<a class="btn" href="#vintage" data-memories>See memories</a>` : s.ended ? `<span class="btn" aria-disabled="true">Ended</span>` : `<span id="go-${s.id}"><a class="btn" href="#show-${s.id}">Find tickets</a></span>`}</div>
     </article>`).join("");
 }
 
@@ -1140,7 +1145,7 @@ function stubHTML(t, withGiveBack){
 
 function openEvent(id){
   const show = showById(id);
-  if (!show || show.ended){ location.hash = ""; return; }
+  if (!show || show.ended || show.soon){ location.hash = ""; return; }
   current.show = show; current.picked = null;
   $("#evWhen").textContent = show.when;
   $("#evName").textContent = show.name;
@@ -2151,7 +2156,7 @@ async function syncMine(){
   watchTracksOnce();
   Store.watchLive(v => { live = v; renderNowPlaying(); });
   Store.watchShowtimes(v => { showStarts = { pretty: v.pretty || null, killer: v.killer || null }; renderGbGate(); });
-  SHOWS.filter(s => !s.ended).forEach(show => Store.watchTaken(show.id, taken => {
+  SHOWS.filter(s => !s.ended && !s.soon).forEach(show => Store.watchTaken(show.id, taken => {
     const el = $("#left-" + show.id);
     const full = taken.size >= SEATS.length, open = SEATS.length - taken.size;
     if (el){
