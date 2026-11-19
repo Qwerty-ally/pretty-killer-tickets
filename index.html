@@ -61,6 +61,8 @@ html,body{margin:0}
 .live-sign{display:inline-flex;align-items:center;gap:.3em;margin:10px 0 6px;font:500 clamp(48px,12vw,104px)/1 "Quicksand","Varela Round",system-ui,sans-serif;letter-spacing:.05em;color:#ffd6dc;padding:.16em .45em .2em;border:.05em solid #ffd6dc;border-radius:.3em;text-shadow:0 0 6px #ff2b4a,0 0 16px #ff2b4a,0 0 34px #ff2b4a;box-shadow:0 0 6px #ff2b4a,0 0 16px #ff2b4a,inset 0 0 8px #ff2b4a}
 .live-sign i{width:.24em;height:.24em;border:.05em solid #ffd6dc;border-radius:50%;box-shadow:0 0 8px #ff2b4a,inset 0 0 4px #ff2b4a}
 .live-songs{margin-top:28px}
+.preview-bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 14px;padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:#ff2b4a;color:#fff;font:600 13px var(--mono)}
+.preview-bar a{color:#fff}
 .admin-shows{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
 .pill-btn{min-height:42px;padding:8px 16px;font:600 13px var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:var(--radius);cursor:pointer}
 .pill-btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
@@ -450,7 +452,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
     <h2 class="sec">Shows</h2>
     <div class="events" id="events"></div>
     <a class="cta-card practice" href="practice.html">
-      <div><b>Practice</b><br><span>Practice getting tickets before the real drop. Seats sell out every second, so be quick.</span></div>
+      <div><b>Practice</b><br><span>Practice getting tickets before the real drop. Seats sell out fast, so be quick.</span></div>
       <span class="btn">Start practice ▶</span>
     </a>
     <a class="cta-card" href="#guestbook">
@@ -570,6 +572,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
 
 
     <div id="adminBody" hidden>
+      <p style="margin:0 0 14px"><a class="btn ghost" href="./?preview=live" target="_blank" rel="noopener">See what LIVE will look like ↗</a></p>
       <div class="admin-shows" id="adminShows" role="group" aria-label="Which show's seats"></div>
       <div class="stats" id="stats"></div>
       <section class="acard ci" aria-labelledby="ciHead">
@@ -1139,7 +1142,9 @@ const SIDES = {
 let side = "pretty", override = null;
 try { override = sessionStorage.getItem("pk-side-override"); } catch(e){}
 const LIVE_REVEAL = new Date(2027, 1, 28, 23, 0);   // 11:00 PM, Sunday Feb 28, 2027: ??? becomes LIVE and the site turns LIVE
-const revealed = () => Date.now() >= LIVE_REVEAL;
+// ?preview=live (linked from the admin page) shows the LIVE look early, only on that device
+const LIVE_PREVIEW = new URLSearchParams(location.search).get("preview") === "live";
+const revealed = () => LIVE_PREVIEW || Date.now() >= LIVE_REVEAL;
 const LIVE_TICKETS_OPEN = new Date(2027, 4, 30, 12, 0);   // LIVE tickets go on sale at noon, Sunday, May 30, 2027
 const liveOnSale = () => Date.now() >= LIVE_TICKETS_OPEN;
 // the ??? show (id "mystery") becomes LIVE at the reveal, and a normal show with seats once tickets are on sale
@@ -2320,5 +2325,7 @@ async function syncMine(){
   setInterval(() => { if ((!override || revealed()) && clockSide() !== side) setSide(clockSide()); }, 30000);
 })();
 </script>
+<div class="preview-bar" id="previewBar" hidden>Preview: this is how the site looks after 11 PM on Feb 28, 2027. Fans only see it with this preview link. <a href="./">Close preview</a></div>
+<script>if (new URLSearchParams(location.search).get("preview") === "live") document.getElementById("previewBar").hidden = false;</script>
 </body>
 </html>
