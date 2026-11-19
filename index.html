@@ -7,7 +7,7 @@
 <title>Finn Shapiro Tickets</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Bodoni+Moda:wght@700;900&family=Special+Elite&family=Rubik+Mono+One&family=IBM+Plex+Mono:wght@400;600&family=Karla:wght@400;600;800&family=Yellowtail&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Bodoni+Moda:wght@700;900&family=Special+Elite&family=Rubik+Mono+One&family=IBM+Plex+Mono:wght@400;600&family=Karla:wght@400;600;800&family=Yellowtail&family=Archivo+Black&family=Quicksand:wght@500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
 /* ============ TOKENS ============
    Same two worlds as the shop, picked by the clock:
@@ -34,8 +34,37 @@
   --label-case:uppercase; --label-track:.14em;
   color-scheme:dark;
 }
+/* LIVE: the next tour. From 11:00 PM on Feb 28, 2027 the site wears the LIVE cover's look:
+   red stage curtain, white-on-red type, neon red glow. */
+:root[data-side="live"]{
+  --ground:#0b0708; --ground-2:#211416; --surface:#1a0f11; --ink:#f8f2f3; --muted:#c3abb0;
+  --accent:#ff2b4a; --accent-ink:#ffffff; --line:#3a2226; --taken:#2a1d20; --taken-ink:#7d6a6e;
+  --stage:#ff2b4a; --stage-ink:#ffffff; --section:#1a0f11; --section-line:#3a2226;
+  --display:"Archivo Black","Arial Black",system-ui,sans-serif;
+  --body:"DM Sans",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --radius:12px; --shadow:0 0 0 1px #3a2226,0 0 26px rgba(255,43,74,.28);
+  --label-case:uppercase; --label-track:.1em;
+  color-scheme:dark;
+}
 *{box-sizing:border-box}
 html,body{margin:0}
+:root[data-side="live"] body{background:radial-gradient(ellipse 60% 40% at 50% 20%, rgba(255,32,56,.26), transparent 72%),linear-gradient(to bottom, rgba(0,0,0,.25), rgba(0,0,0,.75)),repeating-linear-gradient(90deg,#0f0204 0,#3d060d 2.2%,#6a0b16 3.6%,#4a0710 4.6%,#0f0204 7%),#0b0708;background-attachment:fixed}
+[data-side="live"] .btn{background:var(--accent);color:var(--accent-ink)}
+[data-side="live"] .btn:hover{background:var(--ink);color:var(--ground)}
+[data-side="live"] .band{background:var(--accent)}
+[data-side="live"] .band span{color:#fff}
+[data-side="live"] h1,[data-side="live"] h2.sec,[data-side="live"] .event h3,[data-side="live"] .brand b{font-weight:400;text-transform:uppercase}
+[data-side="live"] .fx.slashes i{background:#ff2b4a;box-shadow:0 0 10px #ff2b4a,0 0 24px #ff2b4a}
+[data-side="live"] .fx{display:none}
+[data-side="live"] .eyebrow{background:none;color:#fff;font:400 clamp(20px,4vw,30px)/1.2 var(--display);letter-spacing:.01em;-webkit-text-stroke:.22em #ff2b4a;paint-order:stroke fill;padding:0;border:0}
+.live-sign{display:inline-flex;align-items:center;gap:.3em;margin:10px 0 6px;font:500 clamp(48px,12vw,104px)/1 "Quicksand","Varela Round",system-ui,sans-serif;letter-spacing:.05em;color:#ffd6dc;padding:.16em .45em .2em;border:.05em solid #ffd6dc;border-radius:.3em;text-shadow:0 0 6px #ff2b4a,0 0 16px #ff2b4a,0 0 34px #ff2b4a;box-shadow:0 0 6px #ff2b4a,0 0 16px #ff2b4a,inset 0 0 8px #ff2b4a}
+.live-sign i{width:.24em;height:.24em;border:.05em solid #ffd6dc;border-radius:50%;box-shadow:0 0 8px #ff2b4a,inset 0 0 4px #ff2b4a}
+.live-songs{margin-top:28px}
+.live-admin{margin:28px 0 8px}
+.live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:8px}
+.live-grid label{display:grid;grid-template-columns:28px minmax(0,1fr);align-items:center;gap:8px;font:600 13px var(--mono);color:var(--muted)}
+.live-grid input{background:var(--ground-2);border:1.5px solid var(--line);border-radius:var(--radius);padding:8px 10px;min-width:0;width:100%;color:var(--ink)}
 body{background:var(--ground);color:var(--ink);font:16px/1.55 var(--body);padding-inline:16px;min-height:100vh;overflow-x:clip;transition:background-color .5s ease,color .5s ease}
 .wrap{max-width:1120px;margin-inline:auto}
 button,input{font:inherit;color:inherit}
@@ -107,7 +136,12 @@ h2.sec{font:900 34px/1 var(--display);margin:44px 0 16px}
 .event.ended .btn{pointer-events:none}
 .event.soon{outline:2px dashed var(--accent);outline-offset:-2px}
 .event.soon h3{letter-spacing:.2em}
-.event.soon .btn{pointer-events:none;opacity:.75}
+.soon-count{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;padding:14px 16px;background:var(--ground-2);border:1.5px dashed var(--accent);border-radius:var(--radius)}
+.soon-count .label{flex-basis:100%}
+.soon-count .u{font:600 12px var(--mono);color:var(--muted);text-transform:var(--label-case);letter-spacing:var(--label-track)}
+.soon-count b{font:900 34px/1 var(--display);color:var(--accent);font-variant-numeric:tabular-nums;margin-right:2px}
+[data-side="killer"] .soon-count b{font-weight:400}
+.cta-card.practice{background:var(--surface);color:var(--ink);border:2px solid var(--accent)}
 
 /* my tickets */
 .stubs{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
@@ -412,6 +446,10 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
   <section id="home-body">
     <h2 class="sec">Shows</h2>
     <div class="events" id="events"></div>
+    <a class="cta-card practice" href="practice.html">
+      <div><b>Practice</b><br><span>Practice getting tickets before the real drop. Seats sell out every second, so be quick.</span></div>
+      <span class="btn">Start practice ▶</span>
+    </a>
     <a class="cta-card" href="#guestbook">
       <div><b>Guestbook</b><br><span id="gbCardText">Opens 50 minutes after the Pretty or Killer show starts, for 5 hours.</span></div>
       <span class="btn" id="gbCardBtn">See the guestbook ▶</span>
@@ -468,6 +506,10 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
     </figure>
     <div class="tracks" id="tracksPublic"></div>
     <div class="vote-bar" id="voteBar"></div>
+    <section class="live-songs" id="liveSongsPublic" hidden aria-labelledby="liveSongsHead">
+      <h2 class="sec" id="liveSongsHead">LIVE · the 12 songs</h2>
+      <div class="tl"><ol class="tl-list" id="liveSongsList"></ol></div>
+    </section>
   </section>
 
   <!-- GUESTBOOK -->
@@ -647,6 +689,15 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
         <div class="tl-save">
           <button class="btn" type="button" id="saveTracks">Save tracklist</button>
           <span class="mode-note" id="tracksStatus">No changes.</span>
+        </div>
+      </div>
+      <div class="tl-admin live-admin">
+        <h2 class="sec" style="margin-top:8px">LIVE songs</h2>
+        <p class="mode-note" style="margin-bottom:12px">Type LIVE's 12 songs. Fans can't see them yet: they show on the Tracklist page once LIVE is sold out.</p>
+        <div class="live-grid" id="liveSongsAdmin"></div>
+        <div class="tl-save">
+          <button class="btn" type="button" id="saveLiveSongs">Save LIVE songs</button>
+          <span class="mode-note" id="liveSongsStatus">No changes.</span>
         </div>
       </div>
       <div class="admin-cards" style="margin-bottom:56px">
@@ -885,6 +936,20 @@ const Store = {
     if (!fb){ try { cb(JSON.parse(localStorage.getItem("pk-tracklist"))); } catch(e){ cb(null); } return () => {}; }
     return fb.db.collection("tracklist").doc("prettykiller").onSnapshot(d => cb(d.exists ? d.data() : null), () => cb(null));
   },
+  // LIVE's 12 songs live in tracklist/live, scrambled so they aren't readable at a glance.
+  watchLiveSongs(cb){
+    const un = list => (list || []).map(x => { try { return decodeURIComponent(escape(atob(x))); } catch(e){ return ""; } });
+    if (!fb){ try { cb(un(JSON.parse(localStorage.getItem("pk-live-songs")))); } catch(e){ cb([]); } return () => {}; }
+    return fb.db.collection("tracklist").doc("live").onSnapshot(d => cb(d.exists ? un(d.data().pretty) : []), () => cb([]));
+  },
+  async saveLiveSongs(list){
+    const sc = list.map(x => btoa(unescape(encodeURIComponent(x))));
+    if (!fb){ try { localStorage.setItem("pk-live-songs", JSON.stringify(sc)); } catch(e){} return; }
+    const batch = fb.db.batch();
+    batch.set(fb.db.collection("adminTokens").doc("now"), { key: adminKey, at: firebase.firestore.FieldValue.serverTimestamp() });
+    batch.set(fb.db.collection("tracklist").doc("live"), { pretty: sc, killer: [], updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    await batch.commit();
+  },
   async saveTracklist(t){
     if (!fb){ try { localStorage.setItem("pk-tracklist", JSON.stringify(t)); } catch(e){} Demo.notify(); return; }
     const batch = fb.db.batch();
@@ -1051,6 +1116,12 @@ const SIDES = {
       { f:"'Rubik Mono One', sans-serif", c:"#161015", b:"#f7b8d4", r:"-4deg", s:".8em" },
       { f:"'Bodoni Moda', serif", c:"#ffffff", b:"#161015", r:"6deg", s:"1.05em" }
     ] },
+  live:{ pill:"LIVE · Sep 18, 2027", word:"TICKETS", band:"LIVE ✕ SEPTEMBER 18, 2027 ✕ 15 FREEMAN PARKWAY ✕ 12 NEW SONGS ✕ ",
+    ransom:[
+      { f:"'Archivo Black', sans-serif", c:"#ffffff", b:"#ff2b4a", r:"-3deg", s:"1em" },
+      { f:"'Archivo Black', sans-serif", c:"#ff2b4a", b:"transparent", r:"2deg", s:"1em", bd:"3px solid #ff2b4a" },
+      { f:"'Archivo Black', sans-serif", c:"#ffffff", b:"#211416", r:"-1deg", s:"1em" }
+    ] },
   killer:{ pill:"PM · Killer side", word:"TICKETS", band:"FREE TICKETS ✕ PRETTY KILLER TOUR ✕ 15 FREEMAN PARKWAY ✕ ",
     ransom:[
       { f:"'Bodoni Moda', serif", c:"#0a0a0a", b:"#f2ecf0", r:"-4deg", s:"1em" },
@@ -1063,14 +1134,17 @@ const SIDES = {
 };
 let side = "pretty", override = null;
 try { override = sessionStorage.getItem("pk-side-override"); } catch(e){}
-const clockSide = () => new Date().getHours() < 12 ? "pretty" : "killer";
+const LIVE_REVEAL = new Date(2027, 1, 28, 23, 0);   // 11:00 PM, Sunday Feb 28, 2027: ??? becomes LIVE and the site turns LIVE
+const revealed = () => Date.now() >= LIVE_REVEAL;
+const clockSide = () => revealed() ? "live" : new Date().getHours() < 12 ? "pretty" : "killer";
 
 function setSide(next){
   side = next;
   document.documentElement.dataset.side = side;
   const s = SIDES[side];
   $("#sideName").textContent = s.pill;
-  $("#heroTitle").innerHTML = [...s.word].map((ch, i) => {
+  if (side === "live") $("#heroTitle").innerHTML = `<span class="live-sign"><i></i>${s.word}</span>`;
+  else $("#heroTitle").innerHTML = [...s.word].map((ch, i) => {
     const st = s.ransom[i % s.ransom.length];
     return `<span class="ch" aria-hidden="true" style="--f:${st.f};--c:${st.c};--b:${st.b};--r:${st.r};--s:${st.s};--bd:${st.bd||0}">${ch}</span>`;
   }).join("");
@@ -1099,13 +1173,34 @@ function renderEvents(){
     <article class="event ${s.ended ? "ended" : ""} ${s.memories ? "memories" : ""} ${s.soon ? "soon" : ""}">
       <div class="date"><span>${s.month}</span><b>${s.day}</b></div>
       <div>
-        <h3>${s.name}</h3>
+        <h3>${s.soon && revealed() ? "LIVE" : s.name}</h3>
         <div class="meta">${s.when} · ${VENUE_ADDRESS}</div>
-        <div class="tags">${s.soon ? `<span class="tag hot">Coming soon</span><span class="tag">Tickets aren't out yet</span>` : s.ended ? `<span class="tag">This show has ended</span>` : `<span class="tag hot">Free</span><span class="tag">Same ticket for Pretty + Killer</span><span class="tag" id="left-${s.id}">${SEATS.length} seats</span>`}</div>
+        <div class="tags">${s.soon ? `<span class="tag hot">${revealed() ? "New tour" : "Coming soon"}</span><span class="tag">Tickets come out May 30, 2027</span>` : s.ended ? `<span class="tag">This show has ended</span>` : `<span class="tag hot">Free</span><span class="tag">Same ticket for Pretty + Killer</span><span class="tag" id="left-${s.id}">${SEATS.length} seats</span>`}</div>
       </div>
-      <div class="go">${s.soon ? `<span class="btn" aria-disabled="true">Coming soon</span>` : s.memories ? `<a class="btn" href="#vintage" data-memories>See memories</a>` : s.ended ? `<span class="btn" aria-disabled="true">Ended</span>` : `<span id="go-${s.id}"><a class="btn" href="#show-${s.id}">Find tickets</a></span>`}</div>
+      <div class="go">${s.soon ? `<button class="btn" type="button" data-soon="${s.id}" aria-expanded="false" aria-controls="soon-${s.id}">Get tickets</button>` : s.memories ? `<a class="btn" href="#vintage" data-memories>See memories</a>` : s.ended ? `<span class="btn" aria-disabled="true">Ended</span>` : `<span id="go-${s.id}"><a class="btn" href="#show-${s.id}">Find tickets</a></span>`}</div>
+      ${s.soon ? `<div class="soon-count" id="soon-${s.id}" role="timer" hidden></div>` : ""}
     </article>`).join("");
 }
+
+// the ??? show turns into LIVE at 11:00 PM on Sunday, February 28, 2027 (after the Pretty show)
+if (!revealed() && LIVE_REVEAL - Date.now() < 2 ** 31 - 1) setTimeout(() => { renderEvents(); setSide(clockSide()); }, LIVE_REVEAL - Date.now() + 500);
+// "Get tickets" on the ??? / LIVE show opens a countdown to when its tickets come out
+const SOON_OPENS = new Date(2027, 4, 30);   // Sunday, May 30, 2027
+function tickSoon(){
+  document.querySelectorAll(".soon-count:not([hidden])").forEach(el => {
+    const ms = SOON_OPENS - Date.now();
+    if (ms <= 0){ el.innerHTML = `<span class="label">Tickets are out</span>`; return; }
+    const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, sec = Math.floor(ms / 1000) % 60;
+    el.innerHTML = `<span class="label">Tickets come out Sunday, May 30, 2027 in</span><span><b>${d}</b><span class="u">days</span></span><span><b>${h}</b><span class="u">hours</span></span><span><b>${m}</b><span class="u">min</span></span><span><b>${sec}</b><span class="u">sec</span></span>`;
+  });
+}
+setInterval(tickSoon, 1000);
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-soon]"); if (!b) return;
+  const box = document.getElementById("soon-" + b.dataset.soon), open = box.hidden;
+  box.hidden = !open; b.setAttribute("aria-expanded", open); b.textContent = open ? "Hide countdown" : "Get tickets";
+  tickSoon();
+});
 
 function renderMine(){
   $("#myCount").textContent = mine.length;
@@ -1567,6 +1662,30 @@ document.addEventListener("drop", e => {
   dragFrom = null;
 });
 document.addEventListener("dragend", () => { dragFrom = null; document.querySelectorAll(".tl-row.over").forEach(r => r.classList.remove("over")); });
+/* ---------- LIVE songs (admin sets them, fans see them once LIVE is sold out) ---------- */
+let liveSongs = [], liveDraft = Array(12).fill(""), liveTakenN = 0;
+const liveShow = () => SHOWS.find(x => x.id === "live" && !x.soon);   // LIVE tickets aren't sold on this site yet
+const liveSoldOut = () => !!liveShow() && liveTakenN >= SEATS.length;
+function renderLiveSongs(){
+  const show = liveSoldOut() && liveSongs.some(Boolean);
+  $("#liveSongsPublic").hidden = !show;
+  if (show) $("#liveSongsList").innerHTML = liveSongs.map((t, i) => `<li><span class="label">${String(i + 1).padStart(2, "0")}</span> ${esc(t || "To be announced")}</li>`).join("");
+}
+function renderLiveAdmin(){
+  $("#liveSongsAdmin").innerHTML = liveDraft.map((t, i) => `<label for="live-${i}"><span>${String(i + 1).padStart(2, "0")}</span><input id="live-${i}" data-live-i="${i}" maxlength="60" value="${esc(t)}" placeholder="Song ${i + 1}" autocomplete="off"></label>`).join("");
+}
+document.addEventListener("input", e => {
+  const inp = e.target.closest("[data-live-i]"); if (!inp) return;
+  liveDraft[+inp.dataset.liveI] = inp.value;
+  $("#liveSongsStatus").textContent = "Not saved yet.";
+});
+$("#saveLiveSongs").addEventListener("click", async () => {
+  const b = $("#saveLiveSongs"); b.disabled = true; b.textContent = "Saving…";
+  const clean = liveDraft.map(x => x.trim());
+  try { await Store.saveLiveSongs(clean); liveSongs = clean; $("#liveSongsStatus").textContent = "Saved. Hidden from fans until LIVE sells out."; toast("LIVE songs saved"); }
+  catch(x){ toast("Couldn't save the LIVE songs. Try again."); }
+  b.disabled = false; b.textContent = "Save LIVE songs";
+});
 $("#saveTracks").addEventListener("click", async () => {
   const b = $("#saveTracks"); b.disabled = true; b.textContent = "Saving…";
   const clean = { pretty: draft.pretty.map(x => x.trim()), killer: draft.killer.map(x => x.trim()) };
@@ -2148,12 +2267,18 @@ async function syncMine(){
 }
 
 (async function boot(){
-  setSide(override || clockSide());
+  setSide(override && !revealed() ? override : clockSide());
   renderEvents(); renderMine();
   try { await initFirebase(); } catch(e){ console.warn("Firebase didn't load; using demo mode.", e); fb = null; }
   // live "seats open" count on the show list (and a heads-up when a sold-out show gets a free seat)
   const wasFull = {};
   watchTracksOnce();
+  Store.watchLiveSongs(list => {
+    liveSongs = Array.from({ length: 12 }, (_, i) => list[i] || "");
+    if ($("#liveSongsStatus").textContent !== "Not saved yet."){ liveDraft = liveSongs.slice(); renderLiveAdmin(); }
+    renderLiveSongs();
+  });
+  if (liveShow()) Store.watchTaken("live", taken => { liveTakenN = taken.size; renderLiveSongs(); });
   Store.watchLive(v => { live = v; renderNowPlaying(); });
   Store.watchShowtimes(v => { showStarts = { pretty: v.pretty || null, killer: v.killer || null }; renderGbGate(); });
   SHOWS.filter(s => !s.ended && !s.soon).forEach(show => Store.watchTaken(show.id, taken => {
@@ -2170,7 +2295,7 @@ async function syncMine(){
   }));
   route();
   syncMine();
-  setInterval(() => { if (!override && clockSide() !== side) setSide(clockSide()); }, 30000);
+  setInterval(() => { if ((!override || revealed()) && clockSide() !== side) setSide(clockSide()); }, 30000);
 })();
 </script>
 </body>

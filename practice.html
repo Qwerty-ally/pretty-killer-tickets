@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" data-side="pretty">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ticket Practice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Bodoni+Moda:wght@700;900&family=Special+Elite&family=IBM+Plex+Mono:wght@400;600&family=Karla:wght@400;600;800&display=swap">
+<style>
+/* Ticket practice: a pretend ticket drop. "Tickets in 3 2 1", then a long list of seats
+   that sell out a few every second. Find and grab your 3 tickets before they're gone.
+   Same two looks as the tickets site: Pretty (AM, pink) and Killer (PM, black). */
+:root{
+  --ground:#f8d2e1; --ground-2:#fbe2ec; --surface:#fffafc; --ink:#161015; --muted:#8e5a73;
+  --accent:#f25fc4; --accent-ink:#161015; --line:#e9b1c9; --taken:#e6cfd9; --taken-ink:#a58597; --good:#1f8a4c; --bad:#d23a3a;
+  --display:"Bodoni Moda","Didot",Georgia,serif; --body:"Karla",system-ui,sans-serif; --mono:"Special Elite","Courier New",monospace;
+  --radius:3px; --shadow:0 18px 28px -14px rgba(120,30,75,.45); --label-case:none; --label-track:.04em;
+  color-scheme:light;
+}
+:root[data-side="killer"]{
+  --ground:#09080a; --ground-2:#121014; --surface:#141216; --ink:#f2ecf0; --muted:#8c8390;
+  --accent:#ff3fae; --accent-ink:#0a0a0a; --line:#2c272f; --taken:#24202a; --taken-ink:#5f5865; --good:#3ddc84; --bad:#ff5a5a;
+  --display:"Anton","Impact",sans-serif; --body:"IBM Plex Mono",ui-monospace,Menlo,monospace; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --radius:0px; --shadow:6px 6px 0 0 #ff3fae; --label-case:uppercase; --label-track:.14em;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font:16px/1.55 var(--body);min-height:100vh;padding-block:0 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+[hidden]{display:none!important}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.wrap{max-width:860px;margin-inline:auto}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px;border-bottom:1px solid var(--line);margin-bottom:24px}
+.bar a{color:var(--ink);text-decoration:none;font:900 18px/1 var(--display)}
+[data-side="killer"] .bar a{font-weight:400;text-transform:uppercase;letter-spacing:.06em}
+.label{font:600 12px/1.2 var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);color:var(--muted)}
+h1{margin:6px 0 8px;font:900 clamp(56px,13vw,120px)/.95 var(--display);letter-spacing:.04em}
+[data-side="killer"] h1{font-weight:400;color:var(--accent)}
+.sub{margin:0 0 22px;color:var(--muted);max-width:56ch}
+.btn{border:0;cursor:pointer;background:var(--ink);color:var(--ground);padding:12px 20px;min-height:46px;border-radius:var(--radius);font:800 15px var(--body);text-transform:var(--label-case);letter-spacing:var(--label-track);display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+[data-side="killer"] .btn{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.levels{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+.levels button{min-height:42px;padding:8px 14px;font:600 13px var(--mono);color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:var(--radius);cursor:pointer}
+.levels button[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+/* the 3 2 1 */
+.count{display:grid;place-items:center;min-height:52vh;text-align:center}
+.count b{display:block;font:900 clamp(120px,34vw,260px)/1 var(--display);color:var(--accent)}
+.count span{font:600 16px var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){ .count b{animation:pop .9s ease-out} @keyframes pop{from{transform:scale(1.5);opacity:0}to{transform:scale(1);opacity:1}} }
+/* the game */
+.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--ground);padding:10px 0 12px;border-bottom:1px solid var(--line);margin-bottom:14px;display:flex;flex-direction:column;gap:10px}
+.need{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.need .t{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;font:600 13px var(--mono);background:var(--surface);border:2px dashed var(--accent);border-radius:var(--radius)}
+.need .t.got{border-style:solid;border-color:var(--good);color:var(--good)}
+.need .t.lost{border-style:solid;border-color:var(--bad);color:var(--bad);text-decoration:line-through}
+.stats{display:flex;flex-wrap:wrap;gap:6px 16px;font:600 13px var(--mono);color:var(--muted)}
+.stats b{color:var(--ink);font-variant-numeric:tabular-nums}
+.left .track{height:6px;background:var(--taken);border-radius:3px;overflow:hidden;margin-top:4px}
+.left i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr));gap:8px}
+.tix{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding:10px 12px;background:var(--surface);border-radius:var(--radius);border:1.5px solid var(--line)}
+.tix .where{font:600 14px/1.3 var(--mono);font-variant-numeric:tabular-nums}
+.tix .where small{display:block;color:var(--muted);font-size:11px}
+.tix button{min-height:38px;padding:6px 12px;border:0;border-radius:var(--radius);background:var(--accent);color:var(--accent-ink);font:800 13px var(--body);cursor:pointer}
+.tix.sold{background:var(--taken);border-color:var(--taken);color:var(--taken-ink)}
+.tix.sold button{background:none;color:var(--taken-ink);cursor:not-allowed}
+.tix.mine{border-color:var(--good)}
+.tix.mine button{background:var(--good);color:#fff}
+.tix.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+/* result */
+.result{text-align:center;padding:30px 18px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);margin-top:10px}
+.result h2{margin:0 0 6px;font:900 clamp(34px,7vw,56px)/1 var(--display)}
+[data-side="killer"] .result h2{font-weight:400;text-transform:uppercase}
+.result p{margin:0 0 18px;color:var(--muted)}
+.result .row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.best{font:600 13px var(--mono);color:var(--muted);margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar"><a href="./">Finn Shapiro Tickets</a><span class="label">Practice · not real tickets</span></div>
+
+  <!-- start -->
+  <section id="start">
+    <span class="label">Get ready for the real ticket drop</span>
+    <h1>PRACTICE</h1>
+    <p class="sub">When it starts, you get 3 tickets to find. Tap Get on each one before someone else does. A few seats sell out every second, so be quick.</p>
+    <div class="levels" role="group" aria-label="How fast seats sell out">
+      <button type="button" data-lv="easy" aria-pressed="false">Easy</button>
+      <button type="button" data-lv="normal" aria-pressed="true">Normal</button>
+      <button type="button" data-lv="hard" aria-pressed="false">Hard</button>
+    </div>
+    <button class="btn" type="button" id="go">Start practice</button>
+    <p class="best" id="best"></p>
+  </section>
+
+  <!-- 3 2 1 -->
+  <section id="countdown" class="count" hidden aria-live="assertive"><div><span>Tickets in</span><b id="n">3</b></div></section>
+
+  <!-- the drop -->
+  <section id="game" hidden>
+    <div class="hud">
+      <div class="need" id="need" aria-live="polite"></div>
+      <div class="stats"><span>Time <b id="time">0.0</b>s</span><span>Seats left <b id="leftN">0</b></span><span>Wrong taps <b id="wrong">0</b></span></div>
+      <div class="left"><div class="track"><i id="leftBar"></i></div></div>
+    </div>
+    <ul class="list" id="list" aria-label="Tickets"></ul>
+  </section>
+
+  <section id="end" hidden>
+    <div class="result" role="status">
+      <h2 id="endTitle"></h2>
+      <p id="endText"></p>
+      <div class="row"><button class="btn" type="button" id="again">Practice again</button><a class="btn ghost" href="./">Back to tickets</a></div>
+      <p class="best" id="best2"></p>
+    </div>
+  </section>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+document.documentElement.dataset.side = new Date().getHours() < 12 ? "pretty" : "killer";
+
+// how many seats sell every second on each level
+const LEVELS = { easy:{ sell:1, label:"Easy" }, normal:{ sell:2, label:"Normal" }, hard:{ sell:4, label:"Hard" } };
+const SECTIONS = ["Floor", "Left", "Right", "Balcony"];
+let level = "normal", seats = [], need = [], wrong = 0, t0 = 0, tick = null, clock = null, over = true;
+
+let best = {}; try { best = JSON.parse(localStorage.getItem("pk-practice-best")) || {}; } catch(e){}
+const showBest = () => { const b = best[level]; const txt = b ? `Your best on ${LEVELS[level].label}: ${b.toFixed(1)} seconds` : ""; $("#best").textContent = txt; $("#best2").textContent = txt; };
+
+function makeSeats(){
+  seats = [];
+  SECTIONS.forEach(sec => { for (let r = 1; r <= 3; r++) for (let n = 1; n <= 6; n++) seats.push({ id:`${sec}-${r}-${n}`, sec, row:r, n, sold:false, mine:false }); });
+  // the 3 tickets you have to get: different sections so you have to scroll
+  const pool = seats.slice().sort(() => Math.random() - .5), picked = [];
+  for (const s of pool){ if (picked.length < 3 && !picked.some(p => p.sec === s.sec)) picked.push(s); }
+  need = picked.map(s => s.id);
+}
+const name = s => `${s.sec} · Row ${s.row} · Seat ${s.n}`;
+function renderNeed(){
+  $("#need").innerHTML = `<span class="label">Get these:</span>` + need.map(id => { const s = seats.find(x => x.id === id);
+    return `<span class="t ${s.mine ? "got" : s.sold ? "lost" : ""}">${s.mine ? "✓ " : s.sold ? "✗ " : ""}${name(s)}</span>`; }).join("");
+}
+function renderList(){
+  $("#list").innerHTML = seats.map(s => `<li class="tix ${s.sold ? "sold" : ""} ${s.mine ? "mine" : ""}" id="s-${s.id}">
+    <span class="where">${s.sec}<small>Row ${s.row} · Seat ${s.n}</small></span>
+    <button type="button" data-get="${s.id}" ${s.sold || s.mine ? "disabled" : ""} aria-label="Get ${name(s)}">${s.mine ? "Yours" : s.sold ? "Sold" : "Get"}</button></li>`).join("");
+}
+function updateRow(s){
+  const li = document.getElementById("s-" + s.id); if (!li) return;
+  li.className = `tix ${s.sold ? "sold" : ""} ${s.mine ? "mine" : ""}`;
+  const b = li.querySelector("button"); b.disabled = s.sold || s.mine; b.textContent = s.mine ? "Yours" : s.sold ? "Sold" : "Get";
+}
+function updateStats(){
+  const left = seats.filter(s => !s.sold && !s.mine).length;
+  $("#leftN").textContent = left; $("#leftBar").style.width = `${left / seats.length * 100}%`; $("#wrong").textContent = wrong;
+}
+function sellSome(){
+  const secs = (performance.now() - t0) / 1000;
+  const open = seats.filter(s => !s.sold && !s.mine && (secs > 4 || !need.includes(s.id)));   // your tickets are safe for the first 4 seconds
+  for (let i = 0; i < LEVELS[level].sell && open.length; i++){
+    const s = open.splice(Math.floor(Math.random() * open.length), 1)[0]; s.sold = true; updateRow(s);
+  }
+  updateStats(); renderNeed();
+  if (need.some(id => seats.find(s => s.id === id).sold)) finish(false);
+}
+function finish(won){
+  if (over) return; over = true; clearInterval(tick); clearInterval(clock);
+  const secs = (performance.now() - t0) / 1000;
+  $("#game").hidden = true; $("#end").hidden = false;
+  if (won){
+    const isBest = !best[level] || secs < best[level];
+    if (isBest){ best[level] = secs; try { localStorage.setItem("pk-practice-best", JSON.stringify(best)); } catch(e){} }
+    $("#endTitle").textContent = "You got them!";
+    $("#endText").textContent = `All 3 tickets in ${secs.toFixed(1)} seconds${wrong ? ` with ${wrong} wrong tap${wrong === 1 ? "" : "s"}` : ""}.${isBest ? " That's your best yet." : ""}`;
+  } else {
+    const lost = need.map(id => seats.find(s => s.id === id)).find(s => s.sold);
+    $("#endTitle").textContent = "Sold out!";
+    $("#endText").textContent = `Someone else got ${name(lost)}. Try again and be quicker.`;
+  }
+  showBest(); $("#again").focus();
+}
+function start(){
+  makeSeats(); wrong = 0;
+  $("#start").hidden = true; $("#end").hidden = true; $("#game").hidden = true; $("#countdown").hidden = false;
+  let n = 3; $("#n").textContent = n;
+  const step = setInterval(() => {
+    n--;
+    if (n > 0){ const b = $("#n"); b.textContent = n; b.style.animation = "none"; b.offsetWidth; b.style.animation = ""; return; }
+    clearInterval(step);
+    $("#countdown").hidden = true; $("#game").hidden = false;
+    renderList(); renderNeed(); updateStats();
+    over = false; t0 = performance.now();
+    tick = setInterval(sellSome, 1000);
+    clock = setInterval(() => { $("#time").textContent = ((performance.now() - t0) / 1000).toFixed(1); }, 100);
+    window.scrollTo(0, 0);
+  }, 1000);
+}
+document.addEventListener("click", e => {
+  const lv = e.target.closest("[data-lv]");
+  if (lv){ level = lv.dataset.lv; document.querySelectorAll("[data-lv]").forEach(b => b.setAttribute("aria-pressed", b === lv)); showBest(); return; }
+  const g = e.target.closest("[data-get]");
+  if (g && !over){
+    const s = seats.find(x => x.id === g.dataset.get); if (!s || s.sold || s.mine) return;
+    if (need.includes(s.id)){ s.mine = true; updateRow(s); renderNeed(); updateStats(); if (need.every(id => seats.find(x => x.id === id).mine)) finish(true); }
+    else { wrong++; updateStats(); const li = g.closest(".tix"); li.classList.remove("shake"); li.offsetWidth; li.classList.add("shake"); }
+  }
+});
+$("#go").addEventListener("click", start);
+$("#again").addEventListener("click", start);
+showBest();
+</script>
+</body>
+</html>
