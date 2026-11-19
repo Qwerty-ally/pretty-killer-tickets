@@ -61,6 +61,9 @@ html,body{margin:0}
 .live-sign{display:inline-flex;align-items:center;gap:.3em;margin:10px 0 6px;font:500 clamp(48px,12vw,104px)/1 "Quicksand","Varela Round",system-ui,sans-serif;letter-spacing:.05em;color:#ffd6dc;padding:.16em .45em .2em;border:.05em solid #ffd6dc;border-radius:.3em;text-shadow:0 0 6px #ff2b4a,0 0 16px #ff2b4a,0 0 34px #ff2b4a;box-shadow:0 0 6px #ff2b4a,0 0 16px #ff2b4a,inset 0 0 8px #ff2b4a}
 .live-sign i{width:.24em;height:.24em;border:.05em solid #ffd6dc;border-radius:50%;box-shadow:0 0 8px #ff2b4a,inset 0 0 4px #ff2b4a}
 .live-songs{margin-top:28px}
+.admin-shows{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.pill-btn{min-height:42px;padding:8px 16px;font:600 13px var(--mono);text-transform:var(--label-case);letter-spacing:var(--label-track);color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:var(--radius);cursor:pointer}
+.pill-btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .live-admin{margin:28px 0 8px}
 .live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:8px}
 .live-grid label{display:grid;grid-template-columns:28px minmax(0,1fr);align-items:center;gap:8px;font:600 13px var(--mono);color:var(--muted)}
@@ -471,7 +474,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
         <h1 id="evName"></h1>
         <p id="evWhere"></p>
       </div>
-      <div class="tags" style="display:flex;gap:6px;flex-wrap:wrap"><span class="tag hot">Free</span><span class="tag">Same ticket for Pretty + Killer</span></div>
+      <div class="tags" style="display:flex;gap:6px;flex-wrap:wrap"><span class="tag hot">Free</span><span class="tag" id="evBothTag">Same ticket for Pretty + Killer</span></div>
     </div>
     <div class="ev-grid">
       <div class="map-card">
@@ -567,6 +570,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
 
 
     <div id="adminBody" hidden>
+      <div class="admin-shows" id="adminShows" role="group" aria-label="Which show's seats"></div>
       <div class="stats" id="stats"></div>
       <section class="acard ci" aria-labelledby="ciHead">
         <div class="ci-top">
@@ -744,7 +748,7 @@ footer kbd{border:1px solid var(--line);padding:1px 6px;border-radius:4px;backgr
           <label class="choice"><input type="radio" name="rel" id="relFamily" value="family"><span>Family</span></label>
         </div>
       </fieldset>
-      <fieldset>
+      <fieldset id="missWrap">
         <legend class="label">Can't make one of the shows? Check any you'll miss (or leave both empty).</legend>
         <div class="checks">
           <label class="check"><input type="checkbox" id="missMorning"><span>I can't go to the <b>morning show</b><small>The Pretty side (AM)</small></span></label>
@@ -1136,6 +1140,11 @@ let side = "pretty", override = null;
 try { override = sessionStorage.getItem("pk-side-override"); } catch(e){}
 const LIVE_REVEAL = new Date(2027, 1, 28, 23, 0);   // 11:00 PM, Sunday Feb 28, 2027: ??? becomes LIVE and the site turns LIVE
 const revealed = () => Date.now() >= LIVE_REVEAL;
+const LIVE_TICKETS_OPEN = new Date(2027, 4, 30);   // LIVE tickets go on sale Sunday, May 30, 2027
+const liveOnSale = () => Date.now() >= LIVE_TICKETS_OPEN;
+// the ??? show (id "mystery") becomes LIVE at the reveal, and a normal show with seats once tickets are on sale
+{ const m = SHOWS.find(x => x.id === "mystery");
+  if (m){ m.oneShow = true; if (revealed()) m.name = "LIVE"; if (liveOnSale()) m.soon = false; } }
 const clockSide = () => revealed() ? "live" : new Date().getHours() < 12 ? "pretty" : "killer";
 
 function setSide(next){
@@ -1175,7 +1184,7 @@ function renderEvents(){
       <div>
         <h3>${s.soon && revealed() ? "LIVE" : s.name}</h3>
         <div class="meta">${s.when} · ${VENUE_ADDRESS}</div>
-        <div class="tags">${s.soon ? `<span class="tag hot">${revealed() ? "New tour" : "Coming soon"}</span><span class="tag">Tickets come out May 30, 2027</span>` : s.ended ? `<span class="tag">This show has ended</span>` : `<span class="tag hot">Free</span><span class="tag">Same ticket for Pretty + Killer</span><span class="tag" id="left-${s.id}">${SEATS.length} seats</span>`}</div>
+        <div class="tags">${s.soon ? `<span class="tag hot">${revealed() ? "New tour" : "Coming soon"}</span><span class="tag">Tickets come out May 30, 2027</span>` : s.ended ? `<span class="tag">This show has ended</span>` : `<span class="tag hot">Free</span>${s.oneShow ? "" : `<span class="tag">Same ticket for Pretty + Killer</span>`}<span class="tag" id="left-${s.id}">${SEATS.length} seats</span>`}</div>
       </div>
       <div class="go">${s.soon ? `<button class="btn" type="button" data-soon="${s.id}" aria-expanded="false" aria-controls="soon-${s.id}">Get tickets</button>` : s.memories ? `<a class="btn" href="#vintage" data-memories>See memories</a>` : s.ended ? `<span class="btn" aria-disabled="true">Ended</span>` : `<span id="go-${s.id}"><a class="btn" href="#show-${s.id}">Find tickets</a></span>`}</div>
       ${s.soon ? `<div class="soon-count" id="soon-${s.id}" role="timer" hidden></div>` : ""}
@@ -1183,9 +1192,9 @@ function renderEvents(){
 }
 
 // the ??? show turns into LIVE at 11:00 PM on Sunday, February 28, 2027 (after the Pretty show)
-if (!revealed() && LIVE_REVEAL - Date.now() < 2 ** 31 - 1) setTimeout(() => { renderEvents(); setSide(clockSide()); }, LIVE_REVEAL - Date.now() + 500);
+if (!revealed() && LIVE_REVEAL - Date.now() < 2 ** 31 - 1) setTimeout(() => { const m = SHOWS.find(x => x.id === "mystery"); if (m) m.name = "LIVE"; renderEvents(); setSide(clockSide()); }, LIVE_REVEAL - Date.now() + 500);
 // "Get tickets" on the ??? / LIVE show opens a countdown to when its tickets come out
-const SOON_OPENS = new Date(2027, 4, 30);   // Sunday, May 30, 2027
+const SOON_OPENS = LIVE_TICKETS_OPEN;
 function tickSoon(){
   document.querySelectorAll(".soon-count:not([hidden])").forEach(el => {
     const ms = SOON_OPENS - Date.now();
@@ -1195,6 +1204,7 @@ function tickSoon(){
   });
 }
 setInterval(tickSoon, 1000);
+if (!liveOnSale() && LIVE_TICKETS_OPEN - Date.now() < 2 ** 31 - 1) setTimeout(() => location.reload(), LIVE_TICKETS_OPEN - Date.now() + 1000);
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-soon]"); if (!b) return;
   const box = document.getElementById("soon-" + b.dataset.soon), open = box.hidden;
@@ -1220,7 +1230,7 @@ function stubHTML(t, withGiveBack){
       <span class="label">${esc(show ? show.name : t.show)} · Free</span>
       <h4>${esc(s ? seatLabel(s) : t.seat)}</h4>
       <div class="row"><div><b>Name</b>${esc(t.name)}</div><div><b>Guest of Finn</b>${t.relation === "family" ? "Family" : "Friend"}</div></div>
-      <div class="row"><div><b>Coming to</b>${comingTo(t)}</div></div>
+      ${show && show.oneShow ? "" : `<div class="row"><div><b>Coming to</b>${comingTo(t)}</div></div>`}
       <div class="row"><div><b>Ticket code</b><span class="code">${esc(t.code)}</span></div></div>
       ${!withGiveBack ? "" : giveBackAsk === t.id
         ? `<div class="giveback">Give your seat back so someone else can come? <button class="btn" type="button" data-giveback-yes="${esc(t.id)}" style="padding:6px 10px">Yes, give it back</button><button class="linkish" type="button" data-giveback-no>Keep my ticket</button></div>`
@@ -1232,7 +1242,7 @@ function stubHTML(t, withGiveBack){
             <span class="menu-actions"><button class="btn" type="button" data-shows-save="${esc(t.id)}" style="padding:6px 12px">Save</button><button class="linkish" type="button" data-menu-close>Cancel</button></span>
             <button class="linkish" type="button" data-giveback="${esc(t.id)}">Can't come at all? Give back my seat</button>
           </div>`
-        : (t.key || !fb) ? `<div class="giveback"><button class="linkish" type="button" data-menu="${esc(t.id)}">Can't make it?</button></div>` : ""}
+        : (t.key || !fb) ? (show && show.oneShow ? `<div class="giveback"><button class="linkish" type="button" data-giveback="${esc(t.id)}">Can't make it? Give back my seat</button></div>` : `<div class="giveback"><button class="linkish" type="button" data-menu="${esc(t.id)}">Can't make it?</button></div>`) : ""}
     </div>
     <div class="side">Admit one</div>
   </div>`;
@@ -1244,7 +1254,9 @@ function openEvent(id){
   current.show = show; current.picked = null;
   $("#evWhen").textContent = show.when;
   $("#evName").textContent = show.name;
-  $("#evWhere").textContent = `${VENUE_ADDRESS} · ${SEATS.length} seats · one ticket works for the Pretty and the Killer side`;
+  $("#evWhere").textContent = show.oneShow ? `${VENUE_ADDRESS} · ${SEATS.length} seats` : `${VENUE_ADDRESS} · ${SEATS.length} seats · one ticket works for the Pretty and the Killer side`;
+  $("#evBothTag").hidden = !!show.oneShow; $("#missWrap").hidden = !!show.oneShow;
+  if (show.oneShow){ $("#missMorning").checked = false; $("#missNight").checked = false; }
   $("#modeNote").textContent = fb ? "Seats update live as people claim them." : "Demo mode: tickets save in this browser only until Firebase is added.";
   if (current.unwatch) current.unwatch();
   current.unwatch = Store.watchTaken(show.id, taken => {
@@ -1336,6 +1348,8 @@ $("#claimForm").addEventListener("submit", async e => {
 
 /* ---------- admin ---------- */
 let adminRows = [], adminUnwatch = null, adminConfirm = null, adminKey = null;
+let adminShowId = "prettykiller";   // which show's seats the admin page is showing
+const adminShow = () => showById(adminShowId) || SHOWS[1];
 // Test tickets (test:true, no seat) are kept apart so they never count as a seat,
 // a sale or a dice-roll person. Removing one is permanent: there's no recover button.
 let testRows = [], testConfirm = null;
@@ -1343,14 +1357,14 @@ let adminMove = null, adminMoveTo = null;   // ticket id being moved, and the se
 let adminBusy = false;
 const undoStack = [];   // { label, before:{seat:ticket|null}, after:{seat:code|null} } for this visit
 
-const seatHolders = () => { const m = {}; adminRows.filter(t => t.show === "prettykiller").forEach(t => m[t.seat] = t); return m; };
+const seatHolders = () => { const m = {}; adminRows.filter(t => t.show === adminShowId).forEach(t => m[t.seat] = t); return m; };
 // Apply a seat change and remember how to undo it.
 async function adminChange(label, target){
   if (adminBusy) return false;
   const holders = seatHolders(), before = {}, after = {};
   Object.keys(target).forEach(seat => { before[seat] = holders[seat] ? pickTicket(holders[seat]) : null; after[seat] = target[seat] ? target[seat].code : null; });
   adminBusy = true; renderUndo();
-  try { await Store.layout(target); undoStack.push({ label, before, after }); return true; }
+  try { await Store.layout(target, adminShowId); undoStack.push({ label, before, after }); return true; }
   catch(e){ toast("That didn't go through. Try again."); return false; }
   finally { adminBusy = false; renderUndo(); }
 }
@@ -1361,7 +1375,7 @@ async function adminUndo(){
   const unchanged = Object.keys(last.after).every(seat => (holders[seat] ? holders[seat].code : null) === last.after[seat]);
   if (!unchanged){ undoStack.length = 0; renderUndo(); return toast("Can't undo: someone claimed or gave back a seat since then."); }
   adminBusy = true; renderUndo();
-  try { await Store.layout(last.before); undoStack.pop(); toast(`Undid: ${last.label}`); }
+  try { await Store.layout(last.before, adminShowId); undoStack.pop(); toast(`Undid: ${last.label}`); }
   catch(e){ toast("Undo didn't go through. Try again."); }
   finally { adminBusy = false; renderUndo(); }
 }
@@ -1369,11 +1383,11 @@ function renderUndo(){
   const b = $("#undoBtn"), last = undoStack[undoStack.length - 1];
   b.disabled = !last || adminBusy;
   b.textContent = last ? `Undo: ${last.label}` : "Undo";
-  $("#diceBtn").disabled = adminBusy || adminRows.filter(t => t.show === "prettykiller").length < 1;
+  $("#diceBtn").disabled = adminBusy || adminRows.filter(t => t.show === adminShowId).length < 1;
 }
 // Roll the dice: everyone gets a random seat (open seats included).
 async function rollDice(){
-  const people = adminRows.filter(t => t.show === "prettykiller");
+  const people = adminRows.filter(t => t.show === adminShowId);
   if (!people.length) return toast("No one has a ticket yet.");
   const seats = SEATS.map(x => x.id);
   for (let i = seats.length - 1; i > 0; i--){ const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1); [seats[i], seats[j]] = [seats[j], seats[i]]; }
@@ -1402,7 +1416,7 @@ function startAdmin(){
 const shortName = n => { const parts = String(n || "").trim().split(/\s+/); const s = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0] || ""; return s.length > 12 ? s.slice(0, 11) + "…" : s; };
 function renderAdminMap(rows){
   const L = LAYOUT, bySeat = {}, moving = rows.find(t => t.id === adminMove);
-  rows.filter(t => t.show === "prettykiller").forEach(t => bySeat[t.seat] = t);
+  rows.filter(t => t.show === adminShowId).forEach(t => bySeat[t.seat] = t);
   const areas = L.areas.map(a => {
     const small = a.w < 200, filled = a.seats.filter((_, i) => bySeat[`${a.id}${i+1}`]).length;
     return `<rect x="${a.x}" y="${a.y}" width="${a.w}" height="${a.h}" fill="var(--section)" stroke="var(--section-line)" stroke-width="3"/>
@@ -1474,15 +1488,18 @@ document.addEventListener("input", e => { if (e.target.id === "ciSearch") render
 
 function renderAdmin(){
   const q = $("#aSearch").value.trim().toLowerCase();
-  const all = [...adminRows].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const all = [...adminRows].filter(t => (t.show || "prettykiller") === adminShowId).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const liveOn = SHOWS.some(x => x.id === "mystery" && (revealed() || !x.soon));
+  $("#adminShows").hidden = !liveOn;
+  $("#adminShows").innerHTML = SHOWS.filter(x => x.id === "prettykiller" || (x.id === "mystery" && liveOn))
+    .map(x => `<button class="pill-btn" type="button" data-admin-show="${x.id}" aria-pressed="${x.id === adminShowId}">${esc(x.id === "mystery" ? "LIVE" : x.name)}</button>`).join("");
   const friends = all.filter(t => t.relation === "friend").length, family = all.filter(t => t.relation === "family").length;
   $("#stats").innerHTML = [
     [`${all.length}/${SEATS.length}`, "Seats claimed"],
     [`${SEATS.length - all.length}`, "Seats open"],
     [friends, "Friends"],
     [family, "Family"],
-    [all.filter(t => !t.missMorning).length, "Coming to the morning show"],
-    [all.filter(t => !t.missNight).length, "Coming to the night show"],
+    ...(adminShow().oneShow ? [] : [[all.filter(t => !t.missMorning).length, "Coming to the morning show"], [all.filter(t => !t.missNight).length, "Coming to the night show"]]),
     [`${all.filter(t => t.camera).length}/${MAX_CAMERAS}`, "📷 Cameras"]
   ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
   renderAdminMap(all);
@@ -1493,7 +1510,7 @@ function renderAdmin(){
   bar.hidden = !mv;
   if (mv){
     const from = seatById(mv.seat), to = adminMoveTo && seatById(adminMoveTo);
-    const other = to && all.find(t => t.show === "prettykiller" && t.seat === adminMoveTo);
+    const other = to && all.find(t => t.show === adminShowId && t.seat === adminMoveTo);
     bar.innerHTML = other
       ? `<span>Switch <b>${esc(mv.name)}</b> (${esc(seatLabel(from))}) and <b>${esc(other.name)}</b> (${esc(seatLabel(to))})?</span><button class="btn" type="button" data-move-go>Switch</button><button class="linkish" type="button" data-move-cancel>Cancel</button>`
       : to
@@ -1661,10 +1678,15 @@ document.addEventListener("drop", e => {
   if (to.side !== dragFrom.side || to.i !== dragFrom.i) swapTracks(dragFrom, to);
   dragFrom = null;
 });
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-admin-show]"); if (!b) return;
+  adminShowId = b.dataset.adminShow; adminMove = null; adminMoveTo = null; adminConfirm = null; undoStack.length = 0;
+  renderAdmin();
+});
 document.addEventListener("dragend", () => { dragFrom = null; document.querySelectorAll(".tl-row.over").forEach(r => r.classList.remove("over")); });
 /* ---------- LIVE songs (admin sets them, fans see them once LIVE is sold out) ---------- */
 let liveSongs = [], liveDraft = Array(12).fill(""), liveTakenN = 0;
-const liveShow = () => SHOWS.find(x => x.id === "live" && !x.soon);   // LIVE tickets aren't sold on this site yet
+const liveShow = () => SHOWS.find(x => x.id === "mystery" && !x.soon);   // LIVE, once its tickets are on sale
 const liveSoldOut = () => !!liveShow() && liveTakenN >= SEATS.length;
 function renderLiveSongs(){
   const show = liveSoldOut() && liveSongs.some(Boolean);
@@ -2097,7 +2119,7 @@ document.addEventListener("click", async e => {
   if (go){
     const t = adminRows.find(r => r.id === adminMove), to = adminMoveTo;
     if (!t || !to) return;
-    const other = adminRows.find(r => r.show === "prettykiller" && r.seat === to);
+    const other = adminRows.find(r => r.show === adminShowId && r.seat === to);
     go.disabled = true; go.textContent = other ? "Switching…" : "Moving…";
     const ok = other
       ? await adminChange(`Switch ${shortName(t.name)} and ${shortName(other.name)}`, { [t.seat]: other, [to]: t })
@@ -2278,7 +2300,7 @@ async function syncMine(){
     if ($("#liveSongsStatus").textContent !== "Not saved yet."){ liveDraft = liveSongs.slice(); renderLiveAdmin(); }
     renderLiveSongs();
   });
-  if (liveShow()) Store.watchTaken("live", taken => { liveTakenN = taken.size; renderLiveSongs(); });
+  if (liveShow()) Store.watchTaken("mystery", taken => { liveTakenN = taken.size; renderLiveSongs(); });
   Store.watchLive(v => { live = v; renderNowPlaying(); });
   Store.watchShowtimes(v => { showStarts = { pretty: v.pretty || null, killer: v.killer || null }; renderGbGate(); });
   SHOWS.filter(s => !s.ended && !s.soon).forEach(show => Store.watchTaken(show.id, taken => {
