@@ -1140,7 +1140,7 @@ let side = "pretty", override = null;
 try { override = sessionStorage.getItem("pk-side-override"); } catch(e){}
 const LIVE_REVEAL = new Date(2027, 1, 28, 23, 0);   // 11:00 PM, Sunday Feb 28, 2027: ??? becomes LIVE and the site turns LIVE
 const revealed = () => Date.now() >= LIVE_REVEAL;
-const LIVE_TICKETS_OPEN = new Date(2027, 4, 30);   // LIVE tickets go on sale Sunday, May 30, 2027
+const LIVE_TICKETS_OPEN = new Date(2027, 4, 30, 12, 0);   // LIVE tickets go on sale at noon, Sunday, May 30, 2027
 const liveOnSale = () => Date.now() >= LIVE_TICKETS_OPEN;
 // the ??? show (id "mystery") becomes LIVE at the reveal, and a normal show with seats once tickets are on sale
 { const m = SHOWS.find(x => x.id === "mystery");
@@ -1184,7 +1184,7 @@ function renderEvents(){
       <div>
         <h3>${s.soon && revealed() ? "LIVE" : s.name}</h3>
         <div class="meta">${s.when} · ${VENUE_ADDRESS}</div>
-        <div class="tags">${s.soon ? `<span class="tag hot">${revealed() ? "New tour" : "Coming soon"}</span><span class="tag">Tickets come out May 30, 2027</span>` : s.ended ? `<span class="tag">This show has ended</span>` : `<span class="tag hot">Free</span>${s.oneShow ? "" : `<span class="tag">Same ticket for Pretty + Killer</span>`}<span class="tag" id="left-${s.id}">${SEATS.length} seats</span>`}</div>
+        <div class="tags">${s.soon ? `<span class="tag hot">${revealed() ? "New tour" : "Coming soon"}</span><span class="tag">Tickets come out May 30, 2027 at noon</span>` : s.ended ? `<span class="tag">This show has ended</span>` : `<span class="tag hot">Free</span>${s.oneShow ? "" : `<span class="tag">Same ticket for Pretty + Killer</span>`}<span class="tag" id="left-${s.id}">${SEATS.length} seats</span>`}</div>
       </div>
       <div class="go">${s.soon ? `<button class="btn" type="button" data-soon="${s.id}" aria-expanded="false" aria-controls="soon-${s.id}">Get tickets</button>` : s.memories ? `<a class="btn" href="#vintage" data-memories>See memories</a>` : s.ended ? `<span class="btn" aria-disabled="true">Ended</span>` : `<span id="go-${s.id}"><a class="btn" href="#show-${s.id}">Find tickets</a></span>`}</div>
       ${s.soon ? `<div class="soon-count" id="soon-${s.id}" role="timer" hidden></div>` : ""}
@@ -1200,7 +1200,7 @@ function tickSoon(){
     const ms = SOON_OPENS - Date.now();
     if (ms <= 0){ el.innerHTML = `<span class="label">Tickets are out</span>`; return; }
     const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, sec = Math.floor(ms / 1000) % 60;
-    el.innerHTML = `<span class="label">Tickets come out Sunday, May 30, 2027 in</span><span><b>${d}</b><span class="u">days</span></span><span><b>${h}</b><span class="u">hours</span></span><span><b>${m}</b><span class="u">min</span></span><span><b>${sec}</b><span class="u">sec</span></span>`;
+    el.innerHTML = `<span class="label">Tickets come out at noon on Sunday, May 30, 2027, in</span><span><b>${d}</b><span class="u">days</span></span><span><b>${h}</b><span class="u">hours</span></span><span><b>${m}</b><span class="u">min</span></span><span><b>${sec}</b><span class="u">sec</span></span>`;
   });
 }
 setInterval(tickSoon, 1000);
