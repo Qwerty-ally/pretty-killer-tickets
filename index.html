@@ -1798,8 +1798,6 @@ function sendLive(v){
 }
 async function playIndex(side, i, pos = 0){
   if (eng.busy) return; eng.busy = true;
-  // the first Play on a side sets that show's start time (or replaces one left over from an earlier day)
-  if (!showStarts[side] || Date.now() - showStarts[side] > 12 * 60 * 60 * 1000) Store.setShowStart(side, true).catch(() => {});
   try {
     const path = songFile(side, i), ok = await hasFile(path);
     eng = { side, index: i, audio: ok, busy: true };
@@ -1940,10 +1938,10 @@ function renderGbGate(){
   const t = $("#gbOpenText");
   if (t){
     const now = Date.now();
-    t.textContent = "The guestbook opens 50 minutes after each show starts and closes 5 hours later. A show's start is set automatically the first time you press Play on that side. "
+    t.textContent = "The guestbook opens 50 minutes after each show starts and closes 5 hours later. When a show starts, press its \"show started now\" button. "
       + gbWindows().map(x => `${x.name} show started at ${clock(showStarts[x.key])}: guestbook ${now < x.from ? `opens at ${clock(x.from)}` : now < x.to ? `open until ${clock(x.to)}` : `was open ${clock(x.from)}–${clock(x.to)}`}.`).join(" ");
-    $("#gbOpenBtns").innerHTML = GB_SIDES.map(s => !showStarts[s.key]
-      ? `<button class="btn ghost" type="button" data-gbstart="now" data-gbside="${s.key}">${s.name} show started now</button>`
+    $("#gbOpenBtns").innerHTML = GB_SIDES.map(s => !showStarts[s.key] || now - showStarts[s.key] > 12 * 60 * 60 * 1000   // a start from an earlier day doesn't count
+      ? `<button class="btn" type="button" data-gbstart="now" data-gbside="${s.key}">${s.name} show started now</button>`
       : gbStartAsk === s.key ? `<span class="confirm">Reset the ${s.name} start time? <button class="btn" type="button" data-gbstart="clear" data-gbside="${s.key}" style="padding:6px 10px">Yes, reset</button><button class="linkish" type="button" data-gbstart="no">Cancel</button></span>`
       : `<button class="linkish" type="button" data-gbstart="ask" data-gbside="${s.key}">Reset ${s.name} start time</button>`).join("");
   }
